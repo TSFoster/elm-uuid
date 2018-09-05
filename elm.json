@@ -1,0 +1,35 @@
+{
+    "type": "application",
+    "source-directories": [
+        "src"
+    ],
+    "exposed-modules": [
+      "UUID",
+      "UUID.Version4",
+      "UUID.Version4.Variant1",
+      "UUID.Version4.Variant2"
+    ],
+    "elm-version": "0.19.0",
+    "dependencies": {
+        "direct": {
+            "elm/browser": "1.0.0",
+            "elm/core": "1.0.0",
+            "elm/html": "1.0.0",
+            "elm/json": "1.0.0",
+            "elm/random": "1.0.0",
+            "rtfeldman/elm-hex": "1.0.0"
+        },
+        "indirect": {
+            "elm/time": "1.0.0",
+            "elm/url": "1.0.0",
+            "elm/virtual-dom": "1.0.0"
+        }
+    },
+    "test-dependencies": {
+        "direct": {
+            "elm/regex": "1.0.0",
+            "elm-explorations/test": "1.1.0"
+        },
+        "indirect": {}
+    }
+}
