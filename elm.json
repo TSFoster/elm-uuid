@@ -3,15 +3,12 @@
     "name": "TSFoster/elm-uuid",
     "summary": "A package for creating and managing UUIDs",
     "license": "BSD-3-Clause",
-    "version": "1.0.0",
-    "source-directories": [
-        "src"
-    ],
+    "version": "1.0.1",
     "exposed-modules": [
-      "UUID",
-      "UUID.Version4",
-      "UUID.Version4.Variant1",
-      "UUID.Version4.Variant2"
+        "UUID",
+        "UUID.Version4",
+        "UUID.Version4.Variant1",
+        "UUID.Version4.Variant2"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
