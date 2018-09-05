@@ -27,6 +27,10 @@ import UUID.Version4 as V4
 
 
 {-| Generator for version 4 variant 2 UUIDs. See [elm-random](https://package.elm-lang.org/packages/elm/random/latest/) for more information on using Generators.
+
+    ( uuid, newSeed ) =
+        Random.step generator model.seed
+
 -}
 generator : Generator (UUID Version4 Variant2)
 generator =
@@ -34,6 +38,9 @@ generator =
 
 
 {-| Encode a variant 2 version 4 UUID as a JSON string.
+
+    Json.Encode.encode 0 (encode someUUID) -- e.g. "\"e87947aa-42a0-4b96-d5dc-181285004d36\""
+
 -}
 encode : UUID Version4 Variant2 -> Json.Encode.Value
 encode =
@@ -41,6 +48,10 @@ encode =
 
 
 {-| Decodes a UUID from a JSON string. Fails if UUID is not version 4 or variant 2.
+
+    Json.Decode.decodeValue decoder someValue
+        |> UUID.canonical -- e.g. "e87947aa-42a0-4b96-d5dc-181285004d36"
+
 -}
 decoder : Json.Decode.Decoder (UUID Version4 Variant2)
 decoder =

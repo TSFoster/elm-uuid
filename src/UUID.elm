@@ -26,6 +26,14 @@ import Json.Encode
 
 
 {-| Opaque type to encapsulate UUIDs. Uses [phantom types](https://medium.com/@ckoster22/advanced-types-in-elm-phantom-types-808044c5946d) to provide information about version and variant.
+
+    type alias Model =
+        { title : String
+        , uuid : UUID Version4 Variant1
+        , published : Maybe Date
+        , authors : List (UUID Version4 Variant1)
+        }
+
 -}
 type alias UUID version variant =
     I.UUID version variant
@@ -63,6 +71,9 @@ nil =
 
 
 {-| Encode a UUID of any version or variant as a JSON string.
+
+    Json.Encode.encode 0 (encode 0 nil) == "\"00000000-0000-0000-0000-000000000000\""
+
 -}
 encode : UUID version variant -> Json.Encode.Value
 encode =
@@ -70,6 +81,11 @@ encode =
 
 
 {-| Decodes a UUID of any version or variant from a JSON string.
+
+    "\"123e4567-e89b-12d3-a456-426655440000\""
+        |> Json.Decode.decodeString decoder
+        |> canonical -- == "123e4567-e89b-12d3-a456-426655440000"
+
 -}
 decoder : Json.Decode.Decoder (UUID version variant)
 decoder =
@@ -77,6 +93,9 @@ decoder =
 
 
 {-| Convert UUID to [canonical textual representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
+
+    canonical nil == "00000000-0000-0000-0000-000000000000"
+
 -}
 canonical : UUID version variant -> String
 canonical =
@@ -84,6 +103,9 @@ canonical =
 
 
 {-| Convert UUID to [Microsoft GUID representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
+
+    microsoftGUID nil == "{00000000-0000-0000-0000-000000000000}"
+
 -}
 microsoftGUID : UUID version variant -> String
 microsoftGUID =
@@ -91,6 +113,9 @@ microsoftGUID =
 
 
 {-| Convert UUID to [URN-namespaced representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
+
+    urn nil == "urn:uuid:00000000-0000-0000-0000-000000000000"
+
 -}
 urn : UUID version variant -> String
 urn =
