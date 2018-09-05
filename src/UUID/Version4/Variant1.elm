@@ -1,13 +1,7 @@
-module UUID.Version4.Variant1 exposing (decoder, encode, generator)
-
-import Internal.UUID exposing (Variant(..), forceVariant1, variant)
-import Internal.Version4 as V4
-import Json.Decode
-import Json.Encode
-import Random exposing (Generator)
-import UUID exposing (UUID, Variant1, Version4)
-import UUID.Version4 as V4
-
+module UUID.Version4.Variant1 exposing
+    ( generator
+    , encode, decoder
+    )
 
 {-| Variant 1 version 4 UUIDs provide 122 bits of randomness.
 
@@ -22,6 +16,14 @@ import UUID.Version4 as V4
 @docs encode, decoder
 
 -}
+
+import Internal.UUID exposing (Variant(..), forceVariant1, variant)
+import Internal.Version4 as V4
+import Json.Decode
+import Json.Encode
+import Random exposing (Generator)
+import UUID exposing (UUID, Variant1, Version4)
+import UUID.Version4 as V4
 
 
 {-| Generator for version 4 variant 1 UUIDs. See [elm-random](https://package.elm-lang.org/packages/elm/random/latest/) for more information on using Generators.
