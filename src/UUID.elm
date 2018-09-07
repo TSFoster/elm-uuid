@@ -1,12 +1,12 @@
 module UUID exposing
-    ( UUID, Version4, Variant1, Variant2, Nil, nil
+    ( UUID, Version3, Version4, Variant1, Variant2, Nil, nil
     , encode, decoder
     , canonical, microsoftGUID, urn
     )
 
 {-| A module defining UUIDs in the general, and providing functions for encoding, decoding and formatting UUIDs.
 
-@docs UUID, Version4, Variant1, Variant2, Nil, nil
+@docs UUID, Version3, Version4, Variant1, Variant2, Nil, nil
 
 
 ## JSON
@@ -47,6 +47,12 @@ type alias Nil =
 
 {-| Used to denote version of version 4 UUIDs.
 -}
+type alias Version3 =
+    I.Version3
+
+
+{-| Used to denote version of version 4 UUIDs.
+-}
 type alias Version4 =
     I.Version4
 
@@ -67,7 +73,7 @@ type alias Variant2 =
 -}
 nil : UUID Nil Nil
 nil =
-    I.fromStrings "00000000" "0000" "0000" "0000" "000000000000"
+    I.nil
 
 
 {-| Encode a UUID of any version or variant as a JSON string.
@@ -108,8 +114,8 @@ canonical =
 
 -}
 microsoftGUID : UUID version variant -> String
-microsoftGUID =
-    I.microsoftGUID
+microsoftGUID uuid =
+    "{" ++ canonical uuid ++ "}"
 
 
 {-| Convert UUID to [URN-namespaced representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
@@ -118,5 +124,5 @@ microsoftGUID =
 
 -}
 urn : UUID version variant -> String
-urn =
-    I.urn
+urn uuid =
+    "urn:uuid:" ++ canonical uuid

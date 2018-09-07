@@ -17,8 +17,7 @@ module UUID.Version4.Variant1 exposing
 
 -}
 
-import Internal.UUID exposing (Variant(..), forceVariant1, variant)
-import Internal.Version4 as V4
+import Internal.UUID as I
 import Json.Decode
 import Json.Encode
 import Random exposing (Generator)
@@ -34,7 +33,9 @@ import UUID.Version4 as V4
 -}
 generator : Generator (UUID Version4 Variant1)
 generator =
-    V4.generator V1
+    I.generator
+        |> Random.map I.setVersion4
+        |> Random.map I.setVariant1
 
 
 {-| Encode a variant 1 version 4 UUID as a JSON string.
@@ -44,7 +45,7 @@ generator =
 -}
 encode : UUID Version4 Variant1 -> Json.Encode.Value
 encode =
-    V4.encode
+    I.encode
 
 
 {-| Decodes a UUID from a JSON string. Fails if UUID is not version 4 or variant 1.
@@ -56,13 +57,4 @@ encode =
 decoder : Json.Decode.Decoder (UUID Version4 Variant1)
 decoder =
     V4.decoder
-        |> Json.Decode.andThen checkVariant1
-
-
-checkVariant1 : UUID version variant -> Json.Decode.Decoder (UUID version Variant1)
-checkVariant1 uuid =
-    if variant uuid == Just 1 then
-        Json.Decode.succeed (forceVariant1 uuid)
-
-    else
-        Json.Decode.fail "UUID not Variant 1"
+        |> Json.Decode.andThen I.checkVariant1

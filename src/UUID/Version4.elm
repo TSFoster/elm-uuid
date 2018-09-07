@@ -26,14 +26,4 @@ encode =
 -}
 decoder : Json.Decode.Decoder (UUID Version4 variant)
 decoder =
-    I.decoder
-        |> Json.Decode.andThen checkVersion4
-
-
-checkVersion4 : UUID version variant -> Json.Decode.Decoder (UUID Version4 variant)
-checkVersion4 uuid =
-    if I.version uuid == Just 4 then
-        Json.Decode.succeed (I.forceVersion4 uuid)
-
-    else
-        Json.Decode.fail "UUID not Version 4"
+    I.decoder |> Json.Decode.andThen I.checkVersion4
