@@ -8,10 +8,6 @@ import Random exposing (Generator)
 import Regex exposing (Regex)
 import Test exposing (..)
 import UUID exposing (..)
-import UUID.Version3.Variant1 as V3V1
-import UUID.Version3.Variant2 as V3V2
-import UUID.Version4.Variant1 as V4V1
-import UUID.Version4.Variant2 as V4V2
 
 
 suite : Test
@@ -19,12 +15,12 @@ suite =
     describe "UUID"
         [ describe "Version 3"
             [ describe "Variant 1"
-                [ v3Test V3V1.withNamespace nil "hello" "a6c0426f-f9a3-3b59-a62f-4807c382b768"
-                , v3Test V3V1.withNamespace nil "👍" "4d97f1ba-003a-3129-97bf-84e54402e734"
+                [ v3Test v3WithNamespace nil "hello" "a6c0426f-f9a3-3b59-a62f-4807c382b768"
+                , v3Test v3WithNamespace nil "👍" "4d97f1ba-003a-3129-97bf-84e54402e734"
                 ]
             , describe "Variant 2"
-                [ v3Test V3V2.withNamespace nil "hello" "a6c0426f-f9a3-3b59-c62f-4807c382b768"
-                , v3Test V3V2.withNamespace nil "👍" "4d97f1ba-003a-3129-d7bf-84e54402e734"
+                [ v3Test v3v2WithNamespace nil "hello" "a6c0426f-f9a3-3b59-c62f-4807c382b768"
+                , v3Test v3v2WithNamespace nil "👍" "4d97f1ba-003a-3129-d7bf-84e54402e734"
                 ]
             ]
         , describe "Version 4"
@@ -36,7 +32,7 @@ suite =
                 , fuzz v4v1UUID "Has correct variant number" <|
                     correctVariant1Digits
                 , fuzz v4v1UUID "Can be encoded and decoded" <|
-                    encodeThenDecode V4V1.encode V4V1.decoder
+                    encodeThenDecode (decoder |> Json.Decode.andThen checkVersion4 |> Json.Decode.andThen checkVariant1)
                 ]
             , describe "Variant 2"
                 [ fuzz v4v2UUID "Generates valid UUIDs" <|
@@ -46,13 +42,13 @@ suite =
                 , fuzz v4v2UUID "Has correct variant number" <|
                     correctVariant2Digits
                 , fuzz v4v2UUID "Can be encoded and decoded" <|
-                    encodeThenDecode V4V2.encode V4V2.decoder
+                    encodeThenDecode (decoder |> Json.Decode.andThen checkVersion4 |> Json.Decode.andThen checkVariant2)
                 ]
             ]
         , describe "Nil UUID"
             [ test "Is all zeroes" <|
                 \_ ->
-                    Expect.equal "00000000-0000-0000-0000-000000000000" (canonical UUID.nil)
+                    Expect.equal "00000000-0000-0000-0000-000000000000" (canonical nil)
             ]
         , describe "formatting"
             [ fuzz v4v1UUID "Canonical" <|
@@ -76,20 +72,15 @@ suite =
 
 v4v1UUID : Fuzzer (UUID Version4 Variant1)
 v4v1UUID =
-    fromGenerator V4V1.generator
-
-
-v4v2UUID : Fuzzer (UUID Version4 Variant2)
-v4v2UUID =
-    fromGenerator V4V2.generator
-
-
-fromGenerator : Generator a -> Fuzzer a
-fromGenerator generator =
     Fuzz.int
         |> Fuzz.map Random.initialSeed
         |> Fuzz.map (Random.step generator)
         |> Fuzz.map Tuple.first
+
+
+v4v2UUID : Fuzzer (UUID Version4 Variant2)
+v4v2UUID =
+    Fuzz.map toVariant2 v4v1UUID
 
 
 correctVersionNumber : String -> UUID version variant -> Expectation
@@ -135,9 +126,14 @@ variantDigitsIn list =
     canonical >> String.slice 19 20 >> (\digit -> List.member digit list) >> Expect.true "Variant digit incorrect"
 
 
-encodeThenDecode : (UUID version variant -> Value) -> Decoder (UUID version variant) -> UUID version variant -> Expectation
-encodeThenDecode encode decoder uuid =
+encodeThenDecode : Decoder (UUID version variant) -> UUID version variant -> Expectation
+encodeThenDecode decoder uuid =
     encode uuid |> decodeValue decoder |> Expect.equal (Ok uuid)
+
+
+v3v2WithNamespace : UUID version variant -> String -> UUID Version3 Variant2
+v3v2WithNamespace namespace =
+    v3WithNamespace namespace >> toVariant2
 
 
 v3Test : (UUID version variant -> String -> UUID Version3 anyVariant) -> UUID version variant -> String -> String -> Test
