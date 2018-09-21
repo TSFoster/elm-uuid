@@ -1,79 +1,46 @@
 module UUID exposing
     ( UUID
-    , Nil, nil
-    , Version3, v3WithNamespace
-    , dns, url, oid, x500
-    , Version4, generator
-    , Version1(..), Version2(..), Version5(..)
+    , Version1, Version2, Version3, Version4, Version5
     , Variant1, Variant2
+    , nil
+    , canonical, microsoftGUID, urn
+    , generator
+    , v3WithNamespace
+    , dns, url, oid, x500
     , toVariant2
     , isNil, version, isVersion, variant, isVariant
-    , canonical, microsoftGUID, urn
     , encode, decoder
-    , checkVersion3, checkVersion4
+    , checkVersion1, checkVersion2, checkVersion3, checkVersion4, checkVersion5
     , checkVariant1, checkVariant2
     )
 
-{-| A UUID can be used as an identifier for anything. Each 128 bit nubmer,
-usually represented as 32 hexadecimal digits, is generally assumed to be
-Universally Unique (hence the name).
+{-| A UUID looks something like `e1631449-6321-4a58-920c-5440029b092e`, and can
+be used as an identifier for anything. Each 128-bit number, usually represented
+as 32 hexadecimal digits, is generally assumed to be Universally Unique (hence
+the name).
 
 @docs UUID
+
+UUIDs have version numbers (1-5) and variant numbers (1-2). In the above
+example, the UUIDs used are version 4 (which means they're randomly generated),
+and variant 1. If you need to specify a specific version or variant your UUIDs
+should be, this can be done with the [phantom types] associated with the UUID.
+For example, if you do not mind which version your UUID uses, but it needs to be
+variant 1, the type you will need is `UUID version Variant1`. If you do not care
+which version _or_ variant your UUID is, just use `UUID version  variant`, or
+`UUID a b` for short.
+
+[phantom types]: https://medium.com/@ckoster22/advanced-types-in-elm-phantom-types-808044c5946d
+
+A phantom type is defined for each available version and variant:
+
+@docs Version1, Version2, Version3, Version4, Version5
+@docs Variant1, Variant2
 
 
 ## Nil UUID
 
-@docs Nil, nil
-
-
-## UUIDs from hashes
-
-UUIDs can be created using a namespace UUID and a name, which is then hashed to
-create a UUID. The hash function used depends on the version of UUID: verison 3
-UUIDs use MD5, and version 5 UUIDs use SHA-1. Currently, this package can only
-create version 3 UUIDs.
-
-@docs Version3, v3WithNamespace
-@docs dns, url, oid, x500
-
-
-## Random UUIDs
-
-Randomly-generated UUIDs are defined in the version 4
-UUID specification. This package provides a generator for
-the [`elm/random`](https://package.elm-lang.org/packages/elm/random/latest/)
-library.
-
-@docs Version4, generator
-
-
-## Unsupported versions
-
-This module cannot currently create version 1, 2, or 5 UUIDs, but it can still
-encode and decode them. As such, the following types are provided to be used as
-phantom types for the UUID version.
-
-@docs Version1, Version2, Version5
-
-
-## Variants
-
-By default, UUIDs are created as variant 1 UUIDs, but this module does have
-support for variant 2 UUIDs. The following phantom types can be used to restrict
-use of UUIDs to a specific variant.
-
-@docs Variant1, Variant2
-
-If you need to create a variant 2 UUID, any variant 1 UUID can be converted to a
-variant 2 UUID with `toVariant2`. Note that variant 2 UUIDs cannot be converted
-to variant 1 UUIDs.
-
-@docs toVariant2
-
-
-## Inspecting UUIDs
-
-@docs isNil, version, isVersion, variant, isVariant
+@docs nil
 
 
 ## Formatting
@@ -84,6 +51,54 @@ denote the UUID version, and the first two or three bits at position `N` denote
 the variant.
 
 @docs canonical, microsoftGUID, urn
+
+
+## Random UUIDs (Version 4)
+
+Randomly-generated UUIDs are called version 4 UUIDs. This package provides a
+`Random.Generator` for the [`elm/random`][elm-random] library.
+
+[elm-random]: https://package.elm-lang.org/packages/elm/random/latest/
+
+@docs generator
+
+
+## Hierarchical, namespaced UUIDs (Version 3, Version 5)
+
+UUIDs can be created using a namespace UUID and a name, which is then hashed to
+create a new UUID. The hash function used depends on the version of UUID:
+verison 3 UUIDs use MD5, and version 5 UUIDs use SHA-1. **Currently, this
+package can only create version 3 UUIDs.**
+
+Once generated, these UUIDs can then be used as a namespace, making a hierarchy!
+I think this is pretty cool! You can use this method for making predictable
+UUIDs from data, and it also has the added bonus that you don't have to deal
+with random generators/seeds.
+
+@docs v3WithNamespace
+
+The [RFC defining UUIDs][rfc] defines some [base UUIDs][appendix-c] to start
+your hierarchy.
+
+[rfc]: https://tools.ietf.org/html/rfc4122
+[appendix-c]: https://tools.ietf.org/html/rfc4122#appendix-C
+
+@docs dns, url, oid, x500
+
+
+## Using variant 2 UUIDs
+
+You may have noticed that `generator` and `v3WithNamespace` make variant 1
+UUIDs. If you need to create a variant 2 UUID, any UUID can be converted to a
+variant 2 UUID with `toVariant2`. Note that variant 2 UUIDs cannot be converted
+to variant 1 UUIDs.
+
+@docs toVariant2
+
+
+## Inspecting UUIDs
+
+@docs isNil, version, isVersion, variant, isVariant
 
 
 ## JSON
@@ -115,9 +130,16 @@ import String.UTF8
 -- TYPES
 
 
-{-| Opaque type to encapsulate UUIDs. Uses [phantom types](https://medium.com/@ckoster22/advanced-types-in-elm-phantom-types-808044c5946d) to provide information about version and variant.
+{-| This modules provides a UUID type, and functions to work with them. The
+`UUID version variant` type is an [opaque type], which basically means you have
+to use the provided functions if you want to do anything with it!
 
-    type alias Model =
+[opaque type]: https://medium.com/@ckoster22/advanced-types-in-elm-opaque-types-ec5ec3b84ed2
+
+Here is an example of a `Book` model, which uses UUIDs to identify both the book
+and its authors:
+
+    type alias Book =
         { title : String
         , uuid : UUID Version4 Variant1
         , published : Maybe Date
@@ -129,50 +151,37 @@ type UUID version variant
     = UUID (List Int)
 
 
-{-| Used to denote version and variant of the nil UUID.
--}
-type Nil
-    = Nil
-
-
-{-| Used to denote variant 1 UUIDs.
--}
+{-| -}
 type Variant1
     = Variant1
 
 
-{-| Used to denote variant 2 UUIDs.
--}
+{-| -}
 type Variant2
     = Variant2
 
 
-{-| Used to denote version 1 UUIDs.
--}
+{-| -}
 type Version1
     = Version1
 
 
-{-| Used to denote version 2 UUIDs.
--}
+{-| -}
 type Version2
     = Version2
 
 
-{-| Used to denote version 3 UUIDs.
--}
+{-| -}
 type Version3
     = Version3
 
 
-{-| Used to denote version 4 UUIDs.
--}
+{-| -}
 type Version4
     = Version4
 
 
-{-| Used to denote version 5 UUIDs.
--}
+{-| -}
 type Version5
     = Version5
 
@@ -181,14 +190,22 @@ type Version5
 -- DEFINED UUIDS
 
 
-{-| The nil UUID. This is the special UUID "00000000-0000-0000-0000-000000000000".
+{-| One type of UUID not defined above is the nil UUID. This is a ["special form
+of UUID"][nil-rfc] defined as "00000000-0000-0000-0000-000000000000". I suppose
+it can be used as a placeholder for something that doesn't have a UUID yet?
+
+[nil-rfc]: https://tools.ietf.org/html/rfc4122#section-4.1.7
+
 -}
-nil : UUID Nil Nil
+nil : UUID version variant
 nil =
     UUID <| List.repeat 16 0x00
 
 
-{-| A UUID for the DNS namespace, "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+{-| A UUID for the DNS namespace, "6ba7b810-9dad-11d1-80b4-00c04fd430c8".
+
+    v3WithNamespace UUID.dns "elm-lang.org"
+
 -}
 dns : UUID Version1 Variant1
 dns =
@@ -196,20 +213,37 @@ dns =
 
 
 {-| A UUID for the URL namespace, "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
+
+    v3WithNamespace UUID.url "https://package.elm-lang.org"
+
 -}
 url : UUID Version1 Variant1
 url =
     UUID [ 0x6B, 0xA7, 0xB8, 0x11, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4, 0x30, 0xC8 ]
 
 
-{-| A UUID for the object ID (OID) namespace, "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
+{-| A UUID for the [ISO object ID (OID)][oid] namespace,
+"6ba7b812-9dad-11d1-80b4-00c04fd430c8". I am not going to try to explain what an
+OID is, if you need to use this, you probably have a better grasp of them than I
+do!
+
+[oid]: https://en.wikipedia.org/wiki/Object_identifier
+
+    v3WithNamespace UUID.oid "1.2.250.1"
+
 -}
 oid : UUID Version1 Variant1
 oid =
     UUID [ 0x6B, 0xA7, 0xB8, 0x12, 0x9D, 0xAD, 0x11, 0xD1, 0x80, 0xB4, 0x00, 0xC0, 0x4F, 0xD4, 0x30, 0xC8 ]
 
 
-{-| A UUID for the X.500 namespace, "6ba7b814-9dad1-80b4-00c04fd430c8"
+{-| A UUID for the [X.500 Distinguished Name (DN)][x500] namespace,
+"6ba7b814-9dad-11d1-80b4-00c04fd430c8". I am not going to try to explain what a
+X.500 DN is, if you need to use this, you probably have a better grasp of them
+than I do!
+
+[x500]: https://en.wikipedia.org/wiki/X.500
+
 -}
 x500 : UUID Version1 Variant1
 x500 =
@@ -237,7 +271,10 @@ encodeWith method =
     method >> Json.Encode.string
 
 
-{-| Decodes a UUID of any version or variant from a JSON string.
+{-| Decodes a UUID of any version or variant from a JSON string. The decoder is
+intentionally pretty lenient, so should be able to successfully decode any UUID
+string, as long as it only contains 32 hexadecimal digits in uppercase or
+lowercase, and any amount of curly braces, hyphens, spaces or "<urn:uuid:">.
 
     "\"123e4567-e89b-12d3-a456-426655440000\""
         |> Json.Decode.decodeString decoder
@@ -312,6 +349,20 @@ fromBytes bytes =
         Ok <| UUID bytes
 
 
+{-| Generating a random UUID is, I think, the most straightforward way of making a UUID, and I see them used all the time. There are a couple of ways of using a generator to create a value, which are described nicely in the [elm/random docs][elm-random]. Here is an example of how you might use the UUID generator:
+
+[elm-random]: https://package.elm-lang.org/packages/elm/random/latest/
+
+    type Comment
+        = Comment String (UUID Version4 Variant1)
+
+    makeComment : String -> Random.Seed -> ( Comment, Random.Seed )
+    makeComment comment seed =
+        UUID.generator
+            |> Random.map (Comment comment)
+            |> Random.step seed
+
+-}
 generator : Random.Generator (UUID Version4 Variant1)
 generator =
     Random.int 0 255
@@ -344,6 +395,16 @@ checkVariant _ var uuid =
         Json.Decode.fail <| "UUID not variant " ++ String.fromInt var
 
 
+checkVersion1 : UUID version variant -> Json.Decode.Decoder (UUID Version1 variant)
+checkVersion1 =
+    checkVersion Version1 1
+
+
+checkVersion2 : UUID version variant -> Json.Decode.Decoder (UUID Version2 variant)
+checkVersion2 =
+    checkVersion Version2 2
+
+
 checkVersion3 : UUID version variant -> Json.Decode.Decoder (UUID Version3 variant)
 checkVersion3 =
     checkVersion Version3 3
@@ -352,6 +413,11 @@ checkVersion3 =
 checkVersion4 : UUID version variant -> Json.Decode.Decoder (UUID Version4 variant)
 checkVersion4 =
     checkVersion Version4 4
+
+
+checkVersion5 : UUID version variant -> Json.Decode.Decoder (UUID Version5 variant)
+checkVersion5 =
+    checkVersion Version5 5
 
 
 checkVersion : version -> Int -> UUID anyVersion variant -> Json.Decode.Decoder (UUID version variant)
@@ -389,7 +455,19 @@ toVariant1 =
     toVariant Variant1 1
 
 
-{-| Variant 2 UUIDs are very similar to variant 1 UUIDs, the main end-user different being that they provide 1 fewer bit of randomness, vut are a Microsoft standard.
+{-| Variant 2 UUIDs are very similar to variant 1 UUIDs, the main _end-user_
+difference being that they provide 1 fewer bit of randomness, but are a
+Microsoft standard. Note the single digit change in the following example:
+
+    -- c72c207b-0847-386d-bdbc-2e5def81cf81 : UUID Version3 Variant1
+    var1UUID =
+        "hello world" |> v3WithNamespace nil
+
+
+    -- c72c207b-0847-386d-ddbc-2e5def81cf81 : UUID Version3 Variant2
+    var2UUID =
+        var1UUID |> toVariant2
+
 -}
 toVariant2 : UUID version variant -> UUID version Variant2
 toVariant2 =
@@ -419,8 +497,12 @@ stringToUUID string =
     let
         ints =
             string
-                |> String.replace "-" ""
                 |> String.toLower
+                |> String.replace "-" ""
+                |> String.replace "urn:uuid:" ""
+                |> String.replace "{" ""
+                |> String.replace "}" ""
+                |> String.replace " " ""
                 |> String.Extra.break 2
                 |> List.map (Hex.fromString >> Result.toMaybe)
     in
@@ -437,11 +519,16 @@ stringToUUID string =
             |> Json.Decode.succeed
 
 
-{-| Version 3 UUIDs are generated using an MD5 hash of an existing "namespace" UUID and a name.
+{-| Start with an existing UUID as a "parent" UUID, and provide a name to create a new UUID.
 
-    "hello"
-        |> v3WithNamespace nil
-        |> UUID.canonical -- == "a6c0426f-f9a3-3b59-a62f-4807c382b768"
+    grandparent = nil
+    parent = v3WithNamespace grandparent "parent"
+    parentsSibling = v3WithNamespace grandparent "parent's sibling"
+    child1 = v3WithNamespace parent "child1"
+    child2 = v3WithNamespace parent "child2"
+    cousin = v3WithNamespace otherParent "cousin"
+
+    UUID.canonical child2 == "4cacaf93-fcc5-3a02-bc41-c0a3e359e11d"
 
 -}
 v3WithNamespace : UUID version variant -> String -> UUID Version3 Variant1
@@ -472,14 +559,31 @@ withHashedNamespace hashFn (UUID namespaceBytes) name =
 -- INSPECTING
 
 
+{-| If the bits of the UUID indicate that it is properly versioned UUID e.g. version 1,
+returns e.g. `Just 1`. Otherwise, `Nothing`!
+
+    version nil == Nothing
+
+    version (v3WithNamespace nil "Hello") == Just 3
+
+-}
 version : UUID version variant -> Maybe Int
 version (UUID bytes) =
     bytes
         |> List.drop 6
         |> List.head
         |> Maybe.map (Bitwise.shiftRightZfBy 4)
+        |> Maybe.Extra.filter (\v -> v <= 5 && v >= 1)
 
 
+{-| If the bits of the UUID indicate that it is a variant 1 or 2 UUID, returns
+`Just 1` or `Just 2`, respectively. Otherwise, `Nothing`!
+
+    version nil == Nothing
+
+    version (v3WithNamespace nil "Hello") == Just 1
+
+-}
 variant : UUID version variant -> Maybe Int
 variant (UUID bytes) =
     bytes
@@ -490,16 +594,46 @@ variant (UUID bytes) =
         |> Maybe.map (\v -> (v // 2) - 1)
 
 
+{-| `True` if the given UUID is the given version number. Always `False` is the
+integer provided is not 1, 2, 3, 4 or 5! This function checks the actual bits of
+the UUID, not the phantom type.
+
+    isVersion 8 someUUID -- always False!
+
+    isVersion 4 nil -- False!
+
+    someJsonValue
+        |> Json.Decode.decodeValue UUID.decoder
+        |> UUID.isVersion 5
+
+    isVersion 3 (v3WithNamespace nil "hello") -- True
+
+-}
 isVersion : Int -> UUID version variant -> Bool
 isVersion v uuid =
     version uuid == Just v
 
 
+{-| `True` if the given UUID is the given variant number. Always `False` is the
+integer provided is not 1 or 2! This function checks the actual bits of the
+UUID, not the phantom type.
+
+    isVariant 4 someUUID -- always False!
+
+    someJsonValue
+        |> Json.Decode.decodeValue UUID.decoder
+        |> UUID.isVariant 1
+
+    isVariant 2 (someUUID |> toVariant2) -- True
+
+-}
 isVariant : Int -> UUID version variant -> Bool
 isVariant v uuid =
     variant uuid == Just v
 
 
+{-| `True` if the given UUID is "00000000-0000-0000-0000-000000000000".
+-}
 isNil : UUID version variant -> Bool
 isNil (UUID bytes) =
     UUID bytes == nil
