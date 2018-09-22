@@ -21,5 +21,5 @@ those bits of randomness. Still, it is probably more than sufficient for most
 use cases.
 
 [uuid]: https://en.wikipedia.org/wiki/Universally_unique_identifier
-[Documentation]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/
+[Documentation]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID
 [elm/random]: https://package.elm-lang.org/packages/elm/random/latest/
