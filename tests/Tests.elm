@@ -18,12 +18,20 @@ suite =
                     \_ -> Expect.equal "a6c0426f-f9a3-3b59-a62f-4807c382b768" (canonical (nil |> v3ChildNamed "hello"))
                 , test "Correctly hashes nil UUID with 👍" <|
                     \_ -> Expect.equal "4d97f1ba-003a-3129-97bf-84e54402e734" (canonical (nil |> v3ChildNamed "👍"))
+                , test "Correctly hashes DNS UUID with hello" <|
+                    \_ -> Expect.equal "0bacede4-4014-3f9d-b720-173f68a1c933" (canonical (dns |> v3ChildNamed "hello"))
+                , test "Correctly hashes URL UUID with 👍" <|
+                    \_ -> Expect.equal "6d1e7a51-75f1-3fdc-b354-816393a441fe" (canonical (url |> v3ChildNamed "👍"))
                 ]
             , describe "Variant 2"
                 [ test "Correctly hashes nil UUID with hello" <|
                     \_ -> Expect.equal "a6c0426f-f9a3-3b59-c62f-4807c382b768" (canonical (nil |> v3ChildNamed "hello" |> toVariant2))
                 , test "Correctly hashes nil UUID with 👍" <|
                     \_ -> Expect.equal "4d97f1ba-003a-3129-d7bf-84e54402e734" (canonical (nil |> v3ChildNamed "👍" |> toVariant2))
+                , test "Correctly hashes DNS UUID with hello" <|
+                    \_ -> Expect.equal "0bacede4-4014-3f9d-d720-173f68a1c933" (canonical (dns |> v3ChildNamed "hello" |> toVariant2))
+                , test "Correctly hashes URL UUID with 👍" <|
+                    \_ -> Expect.equal "6d1e7a51-75f1-3fdc-d354-816393a441fe" (canonical (url |> v3ChildNamed "👍" |> toVariant2))
                 ]
             ]
         , describe "Version 4"

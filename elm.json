@@ -3,12 +3,13 @@
     "name": "TSFoster/elm-uuid",
     "summary": "A package for creating and managing UUIDs",
     "license": "BSD-3-Clause",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "exposed-modules": [
         "UUID"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
+        "TSFoster/elm-md5": "2.0.0 <= v < 3.0.0",
         "elm/browser": "1.0.0 <= v < 2.0.0",
         "elm/core": "1.0.0 <= v < 2.0.0",
         "elm/html": "1.0.0 <= v < 2.0.0",
@@ -17,11 +18,11 @@
         "elm-community/maybe-extra": "5.0.0 <= v < 6.0.0",
         "elm-community/string-extra": "3.0.0 <= v < 4.0.0",
         "rtfeldman/elm-hex": "1.0.0 <= v < 2.0.0",
-        "truqu/elm-md5": "1.1.0 <= v < 2.0.0",
         "zwilias/elm-utf-tools": "2.0.1 <= v < 3.0.0"
     },
     "test-dependencies": {
         "elm/regex": "1.0.0 <= v < 2.0.0",
+        "elm-community/json-extra": "4.0.0 <= v < 5.0.0",
         "elm-explorations/test": "1.1.0 <= v < 2.0.0"
     }
 }

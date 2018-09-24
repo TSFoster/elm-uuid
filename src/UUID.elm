@@ -105,11 +105,23 @@ useful in conjunction with [json-extra's fromResult function][fromResult].
 
 [fromResult]: https://package.elm-lang.org/packages/elm-community/json-extra/latest/Json-Decode-Extra#fromResult
 
+    import Json.Decode
+    import Json.Decode.Extra
+
+    uuidDecoder : Json.Decode.Decoder UUID
     uuidDecoder =
         Json.Decode.string
             |> Json.Decode.andThen (Json.Decode.Extra.fromResult << UUID.fromString)
             |> Json.Decode.andThen (Json.Decode.Extra.fromResult << UUID.checkVersion 4)
             |> Json.Decode.andThen (Json.Decode.Extra.fromResult << UUID.checkVariant 1)
+
+    Json.Decode.decodeString uuidDecoder "\"00000000-0000-0000-0000-000000000000\""
+        |> Result.toMaybe
+    --> Nothing
+
+    Json.Decode.decodeString uuidDecoder "\"7d25c9af-c80d-4304-a984-1d0b20fc581a\""
+        |> Result.map UUID.canonical
+    --> Ok "7d25c9af-c80d-4304-a984-1d0b20fc581a"
 
 @docs checkVersion, checkVariant, checkNotNil
 
@@ -169,7 +181,8 @@ nil =
 
 {-| A UUID for the DNS namespace, "6ba7b810-9dad-11d1-80b4-00c04fd430c8".
 
-    UUID.dns |> v3ChildNamed "elm-lang.org"
+    UUID.dns |> v3ChildNamed "elm-lang.org" |> UUID.canonical
+    --> "bb125218-fead-3b3f-bcc5-05fbbe879f4d"
 
 -}
 dns : UUID
@@ -179,7 +192,8 @@ dns =
 
 {-| A UUID for the URL namespace, "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
 
-    UUID.url |> v3ChildNamed "https://package.elm-lang.org"
+    UUID.url |> v3ChildNamed "https://package.elm-lang.org" |> UUID.canonical
+    --> "2035dad9-ee50-3732-a2a5-d76a84f42a8a"
 
 -}
 url : UUID
@@ -194,7 +208,8 @@ do!
 
 [oid]: https://en.wikipedia.org/wiki/Object_identifier
 
-    UUID.oid |> v3ChildNamed "1.2.250.1"
+    UUID.oid |> v3ChildNamed "1.2.250.1" |> UUID.canonical
+    --> "2eab101c-060d-3424-aad5-8805218a67bc"
 
 -}
 oid : UUID
@@ -221,7 +236,13 @@ x500 =
 
 {-| This is just an alias for `canonical`, the most common way to represent a UUID.
 
-    canonical someUUID == toString someUUID
+    import Random
+
+    someUUID : UUID
+    someUUID = Random.step generator (Random.initialSeed 345465) |> Tuple.first
+
+    toString someUUID
+    --> canonical someUUID
 
 -}
 toString : UUID -> String
@@ -231,7 +252,8 @@ toString =
 
 {-| Convert UUID to [canonical textual representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
 
-    canonical nil == "00000000-0000-0000-0000-000000000000"
+    canonical nil
+    --> "00000000-0000-0000-0000-000000000000"
 
 -}
 canonical : UUID -> String
@@ -254,7 +276,8 @@ canonical (UUID bytes) =
 
 {-| Convert UUID to [Microsoft GUID representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
 
-    microsoftGUID nil == "{00000000-0000-0000-0000-000000000000}"
+    microsoftGUID nil
+    --> "{00000000-0000-0000-0000-000000000000}"
 
 -}
 microsoftGUID : UUID -> String
@@ -264,7 +287,8 @@ microsoftGUID uuid =
 
 {-| Convert UUID to [URN-namespaced representation](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
 
-    urn nil == "urn:uuid:00000000-0000-0000-0000-000000000000"
+    urn nil
+    --> "urn:uuid:00000000-0000-0000-0000-000000000000"
 
 -}
 urn : UUID -> String
@@ -291,6 +315,8 @@ fromBytes bytes =
 
 [elm-random]: https://package.elm-lang.org/packages/elm/random/latest/
 
+    import Random
+
     type Comment
         = Comment String UUID
 
@@ -316,11 +342,19 @@ generator =
 
 {-| Check which variant a UUID is, and if it's not the right one, return an `Err`.
 
-    (nil |> v3ChildNamed "hello" |> checkVariant 2) == Err "UUID is not variant 2"
+    import Random
 
-    (nil |> checkVariant 2) == Err "UUID does not define a valid variant"
+    someVariant1UUID : UUID
+    someVariant1UUID = Random.step generator (Random.initialSeed 2355673) |> Tuple.first
 
-    (someVariant1UUID |> checkVariant 1) == Ok someVariant1UUID
+    someVariant1UUID |> checkVariant 1
+    --> Ok someVariant1UUID
+
+    nil |> v3ChildNamed "hello" |> checkVariant 2
+    --> Err "UUID is not variant 2"
+
+    nil |> checkVariant 2
+    --> Err "UUID does not define a valid variant"
 
 -}
 checkVariant : Int -> UUID -> Result String UUID
@@ -338,11 +372,19 @@ checkVariant v uuid =
 
 {-| Check which version a UUID is, and if it's not the right one, return an `Err`.
 
-    (nil |> v3ChildNamed "hello" |> checkVersion 4) == Err "UUID is not Version 4"
+    import Random
 
-    (nil |> checkVersion 1) == Err "UUID does not define a valid version"
+    someVersion4UUID : UUID
+    someVersion4UUID = Random.step generator (Random.initialSeed 3476326) |> Tuple.first
 
-    (someVersion4UUID |> checkVersion 4) == Ok someVersion4UUID
+    someVersion4UUID |> checkVersion 4
+    --> Ok someVersion4UUID
+
+    nil |> v3ChildNamed "hello" |> checkVersion 4
+    --> Err "UUID is not Version 4"
+
+    nil |> checkVersion 1
+    --> Err "UUID does not define a valid version"
 
 -}
 checkVersion : Int -> UUID -> Result String UUID
@@ -352,7 +394,7 @@ checkVersion v uuid =
             Ok uuid
 
         Just False ->
-            Err ("UUID not Version " ++ String.fromInt v)
+            Err ("UUID is not Version " ++ String.fromInt v)
 
         Nothing ->
             Err "UUID does not define a valid version"
@@ -361,10 +403,11 @@ checkVersion v uuid =
 {-| A simple function to use while chaining `Result`s. Makes sure the UUID
 you're dealing with isn't the Nil UUID!
 
-    uuid =
-        someString
-            |> UUID.fromString
-            |> Result.andThen (UUID.checkNotNil 4)
+    "8b681345-171d-48a0-9406-469d0a9de997"
+        |> UUID.fromString
+        |> Result.andThen checkNotNil
+        |> Result.map canonical
+    --> Ok "8b681345-171d-48a0-9406-469d0a9de997"
 
 -}
 checkNotNil : UUID -> Result String UUID
@@ -394,14 +437,16 @@ toVersion v (UUID bytes) =
 difference being that they provide 1 fewer bit of randomness, but are a
 Microsoft standard. Note the single digit change in the following example:
 
-    -- c72c207b-0847-386d-bdbc-2e5def81cf81
+    var1UUID : UUID
     var1UUID =
-        nil |> v3ChildNamed "hello world"
+        fromString "12345678-1234-4321-bcde-123456789abc"
+          |> Result.withDefault nil
 
+    canonical var1UUID
+    --> "12345678-1234-4321-bcde-123456789abc"
 
-    -- c72c207b-0847-386d-ddbc-2e5def81cf81
-    var2UUID =
-        var1UUID |> toVariant2
+    canonical (toVariant2 var1UUID)
+    -->"12345678-1234-4321-dcde-123456789abc"
 
 -}
 toVariant2 : UUID -> UUID
@@ -431,17 +476,23 @@ setVariantBits v =
 a fairly broad range of formatted (and mis-formatted) UUIDs, including ones with
 too much whitespace, too many (or not enough) hyphens, or uppercase characters.
 
-    fromString "c72c207b-0847-386d-bdbc-2e5def81cf811" == Err "UUID was not correct length"
+    fromString "c72c207b-0847-386d-bdbc-2e5def81cf811"
+    --> Err "UUID was not correct length"
 
-    fromString "c72c207b-0847-386d-bdbc-2e5def81cg81" == Err "UUID contained non-hexadecimal digits"
+    fromString "c72c207b-0847-386d-bdbc-2e5def81cg81"
+    --> Err "UUID contained non-hexadecimal digits"
 
-    fromString "00000000-0000-0000-0000-000000000000" == Ok nil
+    fromString "00000000-0000-0000-0000-000000000000"
+    --> Ok nil
 
-    fromString "urn:uuid:00000000-0000-0000-0000-000000000000" == Ok nil
+    fromString "urn:uuid:00000000-0000-0000-0000-000000000000"
+    --> Ok nil
 
-    fromString "{00000000-0000-0000-0000-000000000000}" == Ok nil
+    fromString "{00000000-0000-0000-0000-000000000000}"
+    --> Ok nil
 
-    fromString "\n\n     {urn:uuid: 00  000000-0000-0000-0-000-000000000000}" == Ok nil
+    fromString "\n\n     {urn:uuid: 00  000000-0000-0000-0-000-000000000000}"
+    --> Ok nil
 
 **Note:** if you are decoding from JSON, you may like [json-extra's fromResult function][fromResult].
 
@@ -488,38 +539,40 @@ fromString =
 
 {-| Start with an existing UUID as a "parent" UUID, and provide a name to create a new UUID.
 
+    grandparent : UUID
     grandparent = nil
+
+    parent : UUID
     parent = grandparent |> v3ChildNamed "parent"
+
+    parentsSibling : UUID
     parentsSibling = grandparent |> v3ChildNamed "parent's sibling"
+
+    child1 : UUID
     child1 = parent |> v3ChildNamed "child1"
+
+    child2 : UUID
     child2 = parent |> v3ChildNamed "child2"
+
+    cousin : UUID
     cousin = parentsSibling |> v3ChildNamed "cousin"
 
-    UUID.canonical child2 == "4cacaf93-fcc5-3a02-bc41-c0a3e359e11d"
+    canonical child2
+    --> "4cacaf93-fcc5-3a02-bc41-c0a3e359e11d"
 
 -}
 v3ChildNamed : String -> UUID -> UUID
-v3ChildNamed name =
-    childNamedUsingHash MD5.bytes name
-        >> toVersion 3
-        >> toVariant 1
+v3ChildNamed =
+    childNamedUsingHash MD5.fromBytes 3
 
 
-childNamedUsingHash : (String -> List Int) -> String -> UUID -> UUID
-childNamedUsingHash hashFn name (UUID namespaceBytes) =
-    let
-        namespaceString =
-            namespaceBytes
-                |> String.UTF8.toString
-                |> Result.withDefault ""
-
-        digest =
-            hashFn (namespaceString ++ name)
-    in
-    namespaceBytes
-        |> (++) digest
+childNamedUsingHash : (List Int -> List Int) -> Int -> String -> UUID -> UUID
+childNamedUsingHash hashFn hashVersion name (UUID namespaceBytes) =
+    hashFn (namespaceBytes ++ String.UTF8.toBytes name)
         |> List.take 16
         |> UUID
+        |> toVersion hashVersion
+        |> toVariant 1
 
 
 
