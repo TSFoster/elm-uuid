@@ -597,6 +597,61 @@ isVariant v uuid =
     variant uuid == Just v
 
 
+{-| `True` if the given UUID correctly defines a version and variant. Note: the
+nil UUID is not valid!
+
+    isValid nil == False
+
+    Result.map UUID.isValid (UUID.fromString "c72c207b-0847-386d-bdbc-2e5def81cf81") == True
+
+    Result.map UUID.isValid (UUID.fromString "c72c207b-0847-986d-bdbc-2e5def81cf81") == False
+
+-}
+isValid : UUID -> Bool
+isValid (UUID bytes) =
+    case ( List.drop 6 bytes, List.drop 8 bytes ) of
+        ( ver :: _, var :: _ ) ->
+            ver >= 0x10 && ver < 0x50 && var >= 0x80 && var < 0xC0
+
+        _ ->
+            False
+
+
+{-| Checks if the UUID properly defines a version and variant, and if not return
+an `Err`. Note: the nil UUID is not valid!
+
+    checkValid nil == Err "UUID is nil"
+
+    UUID.fromString "c72c207b-0847-386d-bdbc-2e5def81cf81"
+        |> Result.andThen UUID.checkValid
+        |> Result.map UUID.canonical
+        |> (==) Ok "c72c207b-0847-386d-bdbc-2e5def81cf81"
+
+    UUID.fromString "c72c207b-0847-986d-bdbc-2e5def81cf81"
+        |> Result.andThen UUID.checkValid
+        |> (==) Err "Version not defined"
+
+-}
+checkValid : UUID -> Result String UUID
+checkValid uuid =
+    if uuid == nil then
+        Err "UUID is nil"
+
+    else
+        case ( version uuid, variant uuid ) of
+            ( Nothing, Nothing ) ->
+                Err "Neither version nor variant defined"
+
+            ( Nothing, Just _ ) ->
+                Err "Version not defined"
+
+            ( Just _, Nothing ) ->
+                Err "Variant not defined"
+
+            ( Just _, Just _ ) ->
+                Ok uuid
+
+
 {-| `True` if the given UUID is "00000000-0000-0000-0000-000000000000".
 -}
 isNil : UUID -> Bool
