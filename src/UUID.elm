@@ -7,8 +7,8 @@ module UUID exposing
     , toVariant2
     , fromString
     , toString, canonical, microsoftGUID, urn
-    , isNil, version, isVersion, variant, isVariant
-    , checkVersion, checkVariant, checkNotNil
+    , isNil, version, isVersion, variant, isVariant, isValid
+    , checkNotNil, checkVersion, checkVariant, checkValid
     )
 
 {-| A UUID looks something like `e1631449-6321-4a58-920c-5440029b092e`, and can
@@ -97,7 +97,7 @@ Microsoft GUID representation and a URN representation.
 
 Sometimes you may need to check a UUID's version, variant, or whether it's nil.
 
-@docs isNil, version, isVersion, variant, isVariant
+@docs isNil, version, isVersion, variant, isVariant, isValid
 
 Sometimes you may need to ensure that a UUID is definitely a certain version or
 variant. If you're decoding from JSON, you may find the following functions
@@ -123,7 +123,7 @@ useful in conjunction with [json-extra's fromResult function][fromResult].
         |> Result.map UUID.canonical
     --> Ok "7d25c9af-c80d-4304-a984-1d0b20fc581a"
 
-@docs checkVersion, checkVariant, checkNotNil
+@docs checkNotNil, checkVersion, checkVariant, checkValid
 
 -}
 
