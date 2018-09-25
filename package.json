@@ -1,8 +1,8 @@
 {
   "name": "elm-uuid",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "UUIDs in Elm",
-  "main": "src/Main.elm",
+  "main": "src/UUID.elm",
   "scripts": {
     "test": "elm-format --validate src && elm-test tests/Tests.elm && elm-verify-examples --fail-on-warn"
   },
@@ -10,6 +10,12 @@
     "type": "git",
     "url": "git+ssh://git@github.com/TSFoster/elm-uuid.git"
   },
+  "keywords": [
+    "uuid",
+    "uuid3",
+    "uuid4",
+    "elm"
+  ],
   "author": "T.S.Foster",
   "license": "BSD-3-Clause",
   "bugs": {

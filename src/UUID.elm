@@ -2,7 +2,7 @@ module UUID exposing
     ( UUID
     , nil
     , generator
-    , v3ChildNamed
+    , childNamed, v5ChildNamed, v3ChildNamed
     , dns, url, oid, x500
     , toVariant2
     , fromString
@@ -23,8 +23,8 @@ the name).
 
 UUIDs have version numbers (1-5), which describe how they were created, and
 variant numbers (1-2) which describes how they are stored. This module can read
-all UUIDs, but can only currently create versions 3 (a namespaced, heirarchical
-system) and 4 (a randomly-generated UUID). It creates variant 1 UUIDs (probably
+all UUIDs, but can only currently create versions 3, 5 (namespaced, heirarchical
+systems) and 4 (a randomly-generated UUID). It creates variant 1 UUIDs (probably
 the best choice if you don't have a specific need for variant 2), but can
 convert them to variant 2.
 
@@ -48,15 +48,17 @@ Randomly-generated UUIDs are called version 4 UUIDs. This package provides a
 
 UUIDs can be created using a namespace UUID and a name, which is then hashed to
 create a new UUID. The hash function used depends on the version of UUID:
-verison 3 UUIDs use MD5, and version 5 UUIDs use SHA-1. **Currently, this
-package can only create version 3 UUIDs.**
+verison 3 UUIDs use MD5, and version 5 UUIDs use SHA-1. **Version 5 (using
+SHA-1) is the [recommended] version to use.**
 
 Once generated, these UUIDs can then be used as a namespace, making a hierarchy!
 I think this is pretty cool! You can use this method for making predictable
 UUIDs from data, and it also has the added bonus that you don't have to deal
 with random generators/seeds.
 
-@docs v3ChildNamed
+[recommended]: https://tools.ietf.org/html/rfc4122#section-4.3
+
+@docs childNamed, v5ChildNamed, v3ChildNamed
 
 The [RFC defining UUIDs][rfc] defines some [base UUIDs][appendix-c] to start
 your hierarchy.
@@ -69,10 +71,9 @@ your hierarchy.
 
 ### Making variant 2 UUIDs
 
-You may have noticed that `generator` and `v3ChildNamed` make variant 1
-UUIDs. If you need to create a variant 2 UUID, any UUID can be converted to a
-variant 2 UUID with `toVariant2`. Note that variant 2 UUIDs cannot be converted
-to variant 1 UUIDs.
+The above functions for creating UUIDs all create variant 1 UUIDs. If you need
+to create a variant 2 UUID, any UUID can be converted to a variant 2 UUID with
+`toVariant2`. Note that variant 2 UUIDs cannot be converted to variant 1 UUIDs.
 
 @docs toVariant2
 
@@ -134,6 +135,7 @@ import MD5
 import Maybe.Extra
 import Random
 import Result exposing (Result)
+import SHA1
 import String.Extra
 import String.UTF8
 
@@ -537,7 +539,50 @@ fromString =
            )
 
 
-{-| Start with an existing UUID as a "parent" UUID, and provide a name to create a new UUID.
+{-| Start with an existing UUID as a "parent" UUID, and provide a name to create
+a new UUID.
+
+    grandparent : UUID
+    grandparent = nil
+
+    parent : UUID
+    parent = grandparent |> childNamed "parent"
+
+    parentsSibling : UUID
+    parentsSibling = grandparent |> childNamed "parent's sibling"
+
+    child1 : UUID
+    child1 = parent |> childNamed "child1"
+
+    child2 : UUID
+    child2 = parent |> childNamed "child2"
+
+    cousin : UUID
+    cousin = parentsSibling |> childNamed "cousin"
+
+    canonical child2
+    --> "8081b7b9-1fb0-54a5-bcf3-e27b4b07f381"
+
+-}
+childNamed : String -> UUID -> UUID
+childNamed =
+    childNamedUsingHash (SHA1.fromBytes >> SHA1.toBytes) 5
+
+
+{-| Alias for [`childNamed`](#childNamed), for parity with
+[`v3ChildNamed`](#v3ChildNamed), and just in case you need to make extra-clear
+which version UUID you are using!
+-}
+v5ChildNamed : String -> UUID -> UUID
+v5ChildNamed =
+    childNamed
+
+
+{-| Start with an existing UUID as a "parent" UUID, and provide a name to create
+a new UUID. **Note: unless you have good reason to use version 3 UUIDs, it is
+[recommended] you create version 5 UUIDs with [`childNamed`](#childNamed).**
+
+[recommended]: https://tools.ietf.org/html/rfc4122#section-4.3
 
     grandparent : UUID
     grandparent = nil

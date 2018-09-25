@@ -38,6 +38,32 @@ suite =
             [ v4Test 1 uuidFuzzer
             , v4Test 2 (uuidFuzzer |> Fuzz.map toVariant2)
             ]
+        , describe "Version 5"
+            [ describe "Variant 1"
+                [ test "Correctly hashes nil UUID with hello" <|
+                    \_ -> Expect.equal "b7502f40-1152-59f2-ba10-69aeed522cdf" (canonical (nil |> childNamed "hello"))
+                , test "Correctly hashes nil UUID with 👍" <|
+                    \_ -> Expect.equal "515b0ddc-ff3f-5b56-b76c-a13470ddfc8a" (canonical (nil |> childNamed "👍"))
+                , test "Correctly hashes DNS UUID with hello" <|
+                    \_ -> Expect.equal "9342d47a-1bab-5709-9869-c840b2eac501" (canonical (dns |> childNamed "hello"))
+                , test "Correctly hashes URL UUID with 👍" <|
+                    \_ -> Expect.equal "0473c555-f4e2-5656-81ad-5cf331ee85dc" (canonical (url |> childNamed "👍"))
+                ]
+            , describe "Variant 2"
+                [ test "Correctly hashes nil UUID with hello" <|
+                    \_ -> Expect.equal "b7502f40-1152-59f2-da10-69aeed522cdf" (canonical (nil |> childNamed "hello" |> toVariant2))
+                , test "Correctly hashes nil UUID with 👍" <|
+                    \_ -> Expect.equal "515b0ddc-ff3f-5b56-d76c-a13470ddfc8a" (canonical (nil |> childNamed "👍" |> toVariant2))
+                , test "Correctly hashes DNS UUID with hello" <|
+                    \_ -> Expect.equal "9342d47a-1bab-5709-d869-c840b2eac501" (canonical (dns |> childNamed "hello" |> toVariant2))
+                , test "Correctly hashes URL UUID with 👍" <|
+                    \_ -> Expect.equal "0473c555-f4e2-5656-c1ad-5cf331ee85dc" (canonical (url |> childNamed "👍" |> toVariant2))
+                ]
+            , describe "childNamed"
+                [ fuzz (Fuzz.tuple ( Fuzz.string, uuidFuzzer )) "creates v5 UUIDs" <|
+                    \( child, parent ) -> Expect.equal (childNamed child parent) (v5ChildNamed child parent)
+                ]
+            ]
         , describe "Nil UUID"
             [ test "Is all zeroes" <|
                 \_ -> Expect.equal "00000000-0000-0000-0000-000000000000" (canonical nil)

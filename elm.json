@@ -1,15 +1,16 @@
 {
     "type": "package",
     "name": "TSFoster/elm-uuid",
-    "summary": "A package for creating and managing UUIDs",
+    "summary": "Create and manage UUIDs",
     "license": "BSD-3-Clause",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "exposed-modules": [
         "UUID"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
         "TSFoster/elm-md5": "2.0.0 <= v < 3.0.0",
+        "TSFoster/elm-sha1": "1.0.0 <= v < 2.0.0",
         "elm/browser": "1.0.0 <= v < 2.0.0",
         "elm/core": "1.0.0 <= v < 2.0.0",
         "elm/html": "1.0.0 <= v < 2.0.0",
