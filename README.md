@@ -12,6 +12,12 @@ types can be understood and formatted.
 
 ## [Documentation]
 
+## Elm 0.19.1 requires elm-uuid >= 2.2.1
+
+[A bugfix in elm 0.19.1][issue-1945] requires that one of
+[elm-uuid's dependencies][elm-sha1] be updated, so please update this module
+to >= 2.2.1 to continue using in elm 0.19.1.
+
 ## Warning about Version 4 UUIDs
 
 Version 4 UUIDs have either 121 or 122 bits randomly allocated (depending on
@@ -56,3 +62,5 @@ UUID.canonical appID
 [uuid]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 [Documentation]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID
 [elm/random]: https://package.elm-lang.org/packages/elm/random/latest/
+[issue-1945]: https://github.com/elm/compiler/issues/1945
+[elm-sha1]: http://package.elm-lang.org/packages/TSFoster/elm-sha1/latest/
