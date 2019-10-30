@@ -566,7 +566,7 @@ a new UUID.
 -}
 childNamed : String -> UUID -> UUID
 childNamed =
-    childNamedUsingHash (SHA1.fromBytes >> SHA1.toBytes) 5
+    childNamedUsingHash (SHA1.fromByteValues >> SHA1.toByteValues) 5
 
 
 {-| Alias for [`childNamed`](#childNamed), for parity with
