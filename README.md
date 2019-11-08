@@ -6,25 +6,9 @@ usually represented as 32 hexidecimal digits, in the format
 functions for reading, creating, randomly generating, inspecting and formatting
 UUIDs.
 
-There are several versions and variants of UUID. Currently, creating the nil
-UUID, version 3, 4 and 5 UUIDs, and both variants are supported. However, all
-types can be understood and formatted.
+There are several versions and variants of UUID. As of elm-uuid version 3.0.0,
+only versions 3, 4 and 5 are supported, and only variant 1.
 
-## [Documentation]
-
-## Elm 0.19.1 requires elm-uuid >= 2.2.1
-
-[A bugfix in elm 0.19.1][issue-1945] requires that one of
-[elm-uuid's dependencies][elm-sha1] be updated, so please update this module
-to >= 2.2.1 to continue using in elm 0.19.1.
-
-## Warning about Version 4 UUIDs
-
-Version 4 UUIDs have either 121 or 122 bits randomly allocated (depending on
-variant). I am neither an expert in entropy nor [elm/random], but I suspect the
-`Random.Generator` does not provide the necessary entropy to fully utilise all
-those bits of randomness. Still, it is probably more than sufficient for most
-use cases.
 
 ## Examples
 
@@ -33,34 +17,31 @@ import UUID exposing (UUID)
 import Random
 
 
-someSeed : Random.Seed
-someSeed = Random.initialSeed 12345
-
-
-makeIds : Int -> Random.Seed -> (List UUID, Random.Seed)
-makeIds amount seed =
-    Random.step (Random.list amount UUID.generator) seed
-
-
-makeIds 3 someSeed
+Random.initialSeed 12345
+    |> Random.step (Random.list 3 UUID.generator)
     |> Tuple.first
-    |> List.map UUID.toVariant2
-    |> List.map UUID.urn
---> [ "urn:uuid:fe86e741-b117-42ec-cade-4c0e16b4f15c"
---> , "urn:uuid:5fb50b3a-fa84-47eb-c55d-56e740013db2"
---> , "urn:uuid:695eec7b-3084-40e3-d94b-59028c466d1d"
+    |> List.map UUID.toString
+--> [ "88c973e3-f83f-4360-a320-d8844c365130"
+--> , "78bc3402-e662-4d59-bac5-914be6425299"
+--> , "5b58931d-bb69-406d-81a9-7746c300838c"
 --> ]
 
 
 appID : UUID
-appID = UUID.childNamed "myapplication.com" UUID.dns
+appID = UUID.forName "myapplication.com" UUID.dnsNamespace
 
-UUID.canonical appID
+UUID.toString appID
 --> "2ed74b2b-10eb-5b44-93be-69aa8952caac"
 ```
 
-[uuid]: https://en.wikipedia.org/wiki/Universally_unique_identifier
-[Documentation]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID
-[elm/random]: https://package.elm-lang.org/packages/elm/random/latest/
-[issue-1945]: https://github.com/elm/compiler/issues/1945
-[elm-sha1]: http://package.elm-lang.org/packages/TSFoster/elm-sha1/latest/
+
+## What about versions 1 and 2?/I need variant 2 UUIDs./Don't you know people still use version 0!?
+
+Support for these types of UUID were dropped in elm-uuid version 3, as I
+understand them to be very rarely used. However, if there is a need for them,
+I would consider supporting them again. Please [open an issue][new-issue]
+requesting support.
+
+
+[UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier
+[new-issue]: https://github.com/TSFoster/elm-uuid/issues/new

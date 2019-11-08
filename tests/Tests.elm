@@ -5,6 +5,7 @@ import Fuzz exposing (Fuzzer)
 import Random exposing (Generator)
 import Regex exposing (Regex)
 import Result exposing (Result)
+import Shrink exposing (noShrink)
 import Test exposing (..)
 import UUID exposing (..)
 
@@ -12,150 +13,83 @@ import UUID exposing (..)
 suite : Test
 suite =
     describe "UUID"
-        [ describe "Version 3"
-            [ describe "Variant 1"
-                [ test "Correctly hashes nil UUID with hello" <|
-                    \_ -> Expect.equal "a6c0426f-f9a3-3b59-a62f-4807c382b768" (canonical (nil |> v3ChildNamed "hello"))
-                , test "Correctly hashes nil UUID with 👍" <|
-                    \_ -> Expect.equal "4d97f1ba-003a-3129-97bf-84e54402e734" (canonical (nil |> v3ChildNamed "👍"))
-                , test "Correctly hashes DNS UUID with hello" <|
-                    \_ -> Expect.equal "0bacede4-4014-3f9d-b720-173f68a1c933" (canonical (dns |> v3ChildNamed "hello"))
-                , test "Correctly hashes URL UUID with 👍" <|
-                    \_ -> Expect.equal "6d1e7a51-75f1-3fdc-b354-816393a441fe" (canonical (url |> v3ChildNamed "👍"))
-                ]
-            , describe "Variant 2"
-                [ test "Correctly hashes nil UUID with hello" <|
-                    \_ -> Expect.equal "a6c0426f-f9a3-3b59-c62f-4807c382b768" (canonical (nil |> v3ChildNamed "hello" |> toVariant2))
-                , test "Correctly hashes nil UUID with 👍" <|
-                    \_ -> Expect.equal "4d97f1ba-003a-3129-d7bf-84e54402e734" (canonical (nil |> v3ChildNamed "👍" |> toVariant2))
-                , test "Correctly hashes DNS UUID with hello" <|
-                    \_ -> Expect.equal "0bacede4-4014-3f9d-d720-173f68a1c933" (canonical (dns |> v3ChildNamed "hello" |> toVariant2))
-                , test "Correctly hashes URL UUID with 👍" <|
-                    \_ -> Expect.equal "6d1e7a51-75f1-3fdc-d354-816393a441fe" (canonical (url |> v3ChildNamed "👍" |> toVariant2))
-                ]
-            ]
-        , describe "Version 4"
-            [ v4Test 1 uuidFuzzer
-            , v4Test 2 (uuidFuzzer |> Fuzz.map toVariant2)
-            ]
-        , describe "Version 5"
-            [ describe "Variant 1"
-                [ test "Correctly hashes nil UUID with hello" <|
-                    \_ -> Expect.equal "b7502f40-1152-59f2-ba10-69aeed522cdf" (canonical (nil |> childNamed "hello"))
-                , test "Correctly hashes nil UUID with 👍" <|
-                    \_ -> Expect.equal "515b0ddc-ff3f-5b56-b76c-a13470ddfc8a" (canonical (nil |> childNamed "👍"))
-                , test "Correctly hashes DNS UUID with hello" <|
-                    \_ -> Expect.equal "9342d47a-1bab-5709-9869-c840b2eac501" (canonical (dns |> childNamed "hello"))
-                , test "Correctly hashes URL UUID with 👍" <|
-                    \_ -> Expect.equal "0473c555-f4e2-5656-81ad-5cf331ee85dc" (canonical (url |> childNamed "👍"))
-                ]
-            , describe "Variant 2"
-                [ test "Correctly hashes nil UUID with hello" <|
-                    \_ -> Expect.equal "b7502f40-1152-59f2-da10-69aeed522cdf" (canonical (nil |> childNamed "hello" |> toVariant2))
-                , test "Correctly hashes nil UUID with 👍" <|
-                    \_ -> Expect.equal "515b0ddc-ff3f-5b56-d76c-a13470ddfc8a" (canonical (nil |> childNamed "👍" |> toVariant2))
-                , test "Correctly hashes DNS UUID with hello" <|
-                    \_ -> Expect.equal "9342d47a-1bab-5709-d869-c840b2eac501" (canonical (dns |> childNamed "hello" |> toVariant2))
-                , test "Correctly hashes URL UUID with 👍" <|
-                    \_ -> Expect.equal "0473c555-f4e2-5656-c1ad-5cf331ee85dc" (canonical (url |> childNamed "👍" |> toVariant2))
-                ]
-            , describe "childNamed"
-                [ fuzz (Fuzz.tuple ( Fuzz.string, uuidFuzzer )) "creates v5 UUIDs" <|
-                    \( child, parent ) -> Expect.equal (childNamed child parent) (v5ChildNamed child parent)
-                ]
-            ]
-        , describe "Nil UUID"
-            [ test "Is all zeroes" <|
-                \_ -> Expect.equal "00000000-0000-0000-0000-000000000000" (canonical nil)
-            ]
-        , describe "formatting"
-            [ fuzz uuidFuzzer "Canonical" <|
+        [ describe "formatting"
+            [ fuzz fuzzer "Canonical" <|
                 \uuid ->
-                    canonical uuid
-                        |> Regex.contains uuidRegex
-                        |> Expect.true (canonical uuid ++ " did not match canonical regex")
-            , fuzz uuidFuzzer "Microsoft GUID" <|
+                    Expect.true (toRepresentation Canonical uuid ++ " is not in the canonical textual representation") <|
+                        isCanonicalFormat (toRepresentation Canonical uuid)
+            , fuzz fuzzer "GUID" <|
                 \uuid ->
-                    microsoftGUID uuid
-                        |> Regex.contains microsoftGUIDRegex
-                        |> Expect.true (microsoftGUID uuid ++ " did not match Microsoft GUID regex")
-            , fuzz uuidFuzzer "URN GUID" <|
+                    Expect.true (toRepresentation Guid uuid ++ " is not in Microsoft’s textual representation of GUIDs") <|
+                        isGuidFormat (toRepresentation Guid uuid)
+            , fuzz fuzzer "URN" <|
                 \uuid ->
-                    urn uuid
-                        |> Regex.contains urnRegex
-                        |> Expect.true (urn uuid ++ " did not match URN regex")
-            , fuzz uuidFuzzer "toString is just canonical" <|
-                \uuid -> Expect.equal (canonical uuid) (toString uuid)
+                    Expect.true (toRepresentation Urn uuid ++ " is not a correctly-formatted URN for the UUID") <|
+                        isUrnFormat (toRepresentation Urn uuid)
+            , fuzz fuzzer "toString is canonical" <|
+                \uuid -> Expect.equal (toRepresentation Canonical uuid) (toString uuid)
+            , fuzz fuzzer "Can read any representation" <|
+                \uuid ->
+                    Expect.all
+                        [ Expect.equal (fromString (toRepresentation Canonical uuid))
+                        , Expect.equal (fromString (toRepresentation Guid uuid))
+                        , Expect.equal (fromString (toRepresentation Urn uuid))
+                        ]
+                        (Ok uuid)
+            ]
+        , describe "Bytes" <|
+            [ fuzz fuzzer "can convert to and from bytes without a problem" <|
+                \uuid -> Expect.equal (Ok uuid) (fromBytes (toBytes uuid))
             ]
         ]
 
 
-v4Test : Int -> Fuzzer UUID -> Test
-v4Test var fuzzer =
-    describe ("Variant " ++ String.fromInt var)
-        [ fuzz fuzzer "Generates valid UUIDs" <|
-            canonical
-                >> Regex.contains uuidRegex
-                >> Expect.true "Is not valid UUID"
-        , fuzz fuzzer "Has correct version number" <|
-            canonical
-                >> String.slice 14 15
-                >> Expect.equal "4"
-        , fuzz fuzzer "Has correct variant number" <|
-            case var of
-                1 ->
-                    variantDigitsIn [ "8", "9", "a", "b" ]
 
-                2 ->
-                    variantDigitsIn [ "c", "d" ]
-
-                _ ->
-                    always (Expect.fail "Variant digit incorrect")
-        , fuzz fuzzer "Can be converted to String and back" <|
-            toStringsAndBack (fromString >> Result.andThen (checkVersion 4) >> Result.andThen (checkVariant var))
-        ]
+-- FUZZER
 
 
-uuidFuzzer : Fuzzer UUID
-uuidFuzzer =
-    Fuzz.int
-        |> Fuzz.map Random.initialSeed
-        |> Fuzz.map (Random.step generator)
-        |> Fuzz.map Tuple.first
+fuzzer : Fuzzer UUID
+fuzzer =
+    Fuzz.custom generator noShrink
 
 
-uuidRegex : Regex
-uuidRegex =
-    Regex.fromString "^[0-f]{8}-([0-f]{4}-){3}[0-f]{12}$"
-        |> Maybe.withDefault Regex.never
+
+-- REGEX HELPERS
 
 
-microsoftGUIDRegex : Regex
-microsoftGUIDRegex =
-    Regex.fromString "^\\{[0-f]{8}-([0-f]{4}-){3}[0-f]{12}\\}$"
+isCanonicalFormat : String -> Bool
+isCanonicalFormat =
+    Regex.contains canonicalRegex
+
+
+isUrnFormat : String -> Bool
+isUrnFormat =
+    Regex.contains urnRegex
+
+
+isGuidFormat : String -> Bool
+isGuidFormat =
+    Regex.contains guidRegex
+
+
+canonicalRegex : Regex
+canonicalRegex =
+    Regex.fromString ("^" ++ uuidRegexString ++ "$")
         |> Maybe.withDefault Regex.never
 
 
 urnRegex : Regex
 urnRegex =
-    Regex.fromString "^urn:uuid:[0-f]{8}-([0-f]{4}-){3}[0-f]{12}$"
+    Regex.fromString ("^urn:uuid:" ++ uuidRegexString ++ "$")
         |> Maybe.withDefault Regex.never
 
 
-variantDigitsIn : List String -> UUID -> Expectation
-variantDigitsIn list =
-    canonical >> String.slice 19 20 >> (\digit -> List.member digit list) >> Expect.true "Variant digit incorrect"
+guidRegex : Regex
+guidRegex =
+    Regex.fromString ("^\\{" ++ uuidRegexString ++ "\\}$")
+        |> Maybe.withDefault Regex.never
 
 
-toStringsAndBack : (String -> Result String UUID) -> UUID -> Expectation
-toStringsAndBack fromStringFn =
-    Expect.all
-        [ toStringsAndBackWith canonical fromStringFn
-        , toStringsAndBackWith microsoftGUID fromStringFn
-        , toStringsAndBackWith urn fromStringFn
-        ]
-
-
-toStringsAndBackWith : (UUID -> String) -> (String -> Result String UUID) -> UUID -> Expectation
-toStringsAndBackWith toStringFn fromStringFn uuid =
-    Expect.equal (Ok uuid) (fromStringFn <| toStringFn uuid)
+uuidRegexString : String
+uuidRegexString =
+    "[0-f]{8}-[0-f]{4}-[1-5][0-f]{3}-[8-d][0-f]{3}-[0-f]{12}"
