@@ -15,11 +15,8 @@ be used as an identifier for anything. Each 128-bit number, usually represented
 as 32 hexadecimal digits, is generally used under the assumption that it is
 Universally Unique (hence the name).
 
-UUIDs come in one of 5 versions, depending on how they are created, and one of
-two variants, which is related to how they are stored in binary. This module
-only supports variant 1 UUIDs, and only versions 4 (randomly-generated UUIDs),
-and 3 & 5 (namespaced, heirarchical systems created with the use of hashing
-algorithms).
+This package supports variant 1 UUIDs (those outlined in [RFC 4122][rfc]), which
+covers the vast majority of those in use (versions 1-5).
 
 @docs UUID
 
@@ -72,8 +69,9 @@ situations.
 UUIDs are generally represented by 32 hexadecimal digits in the form
 `00112233-4455-M677-N899-aabbccddeeff`, where the four bits at position `M`
 denote the UUID version, and the first two or three bits at position `N` denote
-the variant. This is the "canonical" representation, but there is also a
-Microsoft GUID representation and a URN representation.
+the variant. This is the "canonical" representation, but there is also a URN
+representation and a format used mostly by Microsoft, where they are more
+commonly named GUIDs.
 
 @docs toString, toRepresentation, Representation
 
@@ -94,6 +92,9 @@ check for nil UUIDs, or print the nil UUID.
 
 -}
 
+-- TODO add reading version 1&2??
+-- TODO MORE TESTS
+
 import Bitwise
 import Bytes exposing (Bytes, Endianness(..))
 import Bytes.Decode
@@ -106,10 +107,6 @@ import SHA1
 
 
 
--- TODO rename to Uuid?
--- TODO add variant 2 again???
--- TODO add reading version 1&2??
--- TODO MORE TESTS
 -- TYPES
 
 
@@ -174,6 +171,16 @@ type Error
     | NoVersion
 
 
+{-| There are three typical human-readable representations of UUID: canonical, a
+Uniform Resource Name and Microsoft's formatting for its GUIDs (which are just
+version 4 UUIDs nowadays).
+-}
+type Representation
+    = Canonical
+    | Urn
+    | Guid
+
+
 
 -- FORMATTING
 
@@ -197,16 +204,6 @@ toString (UUID a b c d) =
         ++ "-"
         ++ String.padLeft 4 '0' (toHex [] (Bitwise.and 0xFFFF c))
         ++ String.padLeft 8 '0' (toHex [] d)
-
-
-{-| There are three typical human-readable representations of UUID: canonical, a
-Uniform Resource Name and Microsoft's formatting for its GUIDs (which are just
-version 4 UUIDs nowadays).
--}
-type Representation
-    = Canonical
-    | Urn
-    | Guid
 
 
 {-| Convert UUID to [a given format](https://en.wikipedia.org/wiki/Universally_unique_identifier#Format)
@@ -411,7 +408,7 @@ forBytesV3 bytes namespace =
 -}
 nilBytes : Bytes
 nilBytes =
-    Bytes.Extra.fromByteValues <| List.repeat 16 0
+    toBytes (UUID 0 0 0 0)
 
 
 {-| `True` if the given bytes are the nil UUID (00000000-0000-0000-0000-000000000000).
@@ -603,14 +600,14 @@ fromByteValuesUnchecked ints =
 fromInt32s : Int -> Int -> Int -> Int -> Result Error UUID
 fromInt32s a b c d =
     let
-        wouldBeUuid =
+        wouldBeUUID =
             UUID a b c d
 
         wouldBeVersion =
-            version wouldBeUuid
+            version wouldBeUUID
 
         wouldBeVariant =
-            variant wouldBeUuid
+            variant wouldBeUUID
     in
     if a == 0 && b == 0 && c == 0 && d == 0 then
         Err IsNil
@@ -628,16 +625,7 @@ fromInt32s a b c d =
         Err NoVariant
 
     else
-        Ok wouldBeUuid
-
-
-byteValuesToU32 : Int -> Int -> Int -> Int -> Int
-byteValuesToU32 a b c d =
-    d
-        |> Bitwise.or (Bitwise.shiftLeftBy 0x08 c)
-        |> Bitwise.or (Bitwise.shiftLeftBy 0x10 b)
-        |> Bitwise.or (Bitwise.shiftLeftBy 0x18 a)
-        |> Bitwise.shiftRightZfBy 0
+        Ok wouldBeUUID
 
 
 nibbleValuesToU32 : Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
