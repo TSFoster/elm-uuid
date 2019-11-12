@@ -1,5 +1,6 @@
 module Tests exposing (suite)
 
+import Bytes.Encode
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
 import Random
@@ -12,6 +13,10 @@ import UUID
         ( Error(..)
         , Representation(..)
         , UUID
+        , forBytes
+        , forBytesV3
+        , forName
+        , forNameV3
         , fromBytes
         , fromString
         , generator
@@ -65,7 +70,28 @@ suite =
 
 fuzzer : Fuzzer UUID
 fuzzer =
+    Fuzz.oneOf [ fuzzerV3, fuzzerV4, fuzzerV5 ]
+
+
+fuzzerV3 : Fuzzer UUID
+fuzzerV3 =
+    Fuzz.oneOf
+        [ Fuzz.map2 forNameV3 Fuzz.string fuzzerV4
+        , Fuzz.map2 forBytesV3 (Fuzz.map (Bytes.Encode.encode << Bytes.Encode.string) Fuzz.string) fuzzerV4
+        ]
+
+
+fuzzerV4 : Fuzzer UUID
+fuzzerV4 =
     Fuzz.custom generator noShrink
+
+
+fuzzerV5 : Fuzzer UUID
+fuzzerV5 =
+    Fuzz.oneOf
+        [ Fuzz.map2 forName Fuzz.string fuzzerV4
+        , Fuzz.map2 forBytes (Fuzz.map (Bytes.Encode.encode << Bytes.Encode.string) Fuzz.string) fuzzerV4
+        ]
 
 
 seedFuzzer : Fuzzer Random.Seed
