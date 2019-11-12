@@ -2,13 +2,23 @@ module Tests exposing (suite)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
-import Random exposing (Generator)
+import Random
 import Regex exposing (Regex)
-import Result exposing (Result)
 import Set exposing (Set)
 import Shrink exposing (noShrink)
-import Test exposing (..)
-import UUID exposing (..)
+import Test exposing (Test, describe, fuzz, fuzzWith)
+import UUID
+    exposing
+        ( Error(..)
+        , Representation(..)
+        , UUID
+        , fromBytes
+        , fromString
+        , generator
+        , toBytes
+        , toRepresentation
+        , toString
+        )
 
 
 suite : Test
