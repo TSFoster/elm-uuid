@@ -47,7 +47,7 @@ UUID.toString appID
 
 ## Q&A
 
-###### Which version UUID am I using?
+### Which version UUID am I using?
 
 You can check what variant/version you are using by looking at one of the
 UUIDs, which should be in the format `00000000-0000-A000-B000-000000000000`.
@@ -56,7 +56,7 @@ UUID, and this package is for you! The character in position `A` is the version
 number. (If it isn't `1`, `2`, `3`, `4` or `5`, then it isn't a UUID as defined
 by the [RFC][rfc].)
 
-###### Which version UUID should I use?
+### Which version UUID should I use?
 
 Probably either version 4 or 5, depending on your use case. Version 4 UUIDs
 are randomly generated, while version 5 UUIDs are created from a "name" and
@@ -72,21 +72,21 @@ need to be calculated in some other way from some input data, consider using
 (version 3 UUIDs are very similar, but version 5 is recommended unless required
 for backwards-compatbility).
 
-###### I have a suggestion/I've found a bug
+### I have a suggestion/I've found a bug
 
 Please [open an issue on Github][new-issue] and I'll get back to you as soon as
 I can.
 
-###### I need to create version 1/2 UUIDs
+### I need to create version 1/2 UUIDs
 
 This can't *reaallly* be done in the browser (as far as I know), but feel free
 to [open an issue on Github][new-issue] anyway.
 
-###### I need variant 0 UUIDs!
+### I need variant 0 UUIDs!
 
 Really!? Umm, well I guess you'd better [open an issue on Github][new-issue].
 
-###### I need variant 1 UUIDs!
+### I need variant 1 UUIDs!
 
 This might be better suited in a separate package, but why not [open an issue on
 Github][new-issue]?
