@@ -5,7 +5,7 @@ import Expect
 import Fuzz exposing (Fuzzer)
 import Regex exposing (Regex)
 import Shrink exposing (noShrink)
-import Test exposing (Test, describe, fuzz)
+import Test exposing (Test, describe, fuzz, test)
 import UUID
     exposing
         ( Error(..)
@@ -54,6 +54,28 @@ suite =
         , describe "Bytes" <|
             [ fuzz fuzzer "can convert to and from bytes without a problem" <|
                 \uuid -> Expect.equal (Ok uuid) (fromBytes (toBytes uuid))
+            ]
+        , describe "fromString" <|
+            [ test "reads version 1 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-1234-8888-abcdefabcdef")
+            , test "reads version 2 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-2234-8888-abcdefabcdef")
+            , test "reads version 3 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-3234-8888-abcdefabcdef")
+            , test "reads version 4 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-4234-8888-abcdefabcdef")
+            , test "reads version 5 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-5234-8888-abcdefabcdef")
+            , test "doesn't read variant 0 UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-1234-0888-abcdefabcdef")
+            , test "doesn't read variant 2 UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-1234-d888-abcdefabcdef")
+            , test "doesn't read too-small UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-1234-8888-abcdefabcde")
+            , test "doesn't read too-long UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-1234-8888-abcdefabcdeff")
+            , test "doesn't read non-hex UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-1234-8888-abcdefgabcde")
             ]
         ]
 
