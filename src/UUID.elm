@@ -4,7 +4,7 @@ module UUID exposing
     , generator
     , forName, forBytes, forNameV3, forBytesV3
     , dnsNamespace, urlNamespace, oidNamespace, x500Namespace
-    , fromBytes, toBytes
+    , fromBytes, decoder, toBytes, encoder
     , toString, toRepresentation, Representation(..)
     , version
     , nilBytes, isNilBytes, nilString, isNilString, nilRepresentation
@@ -92,12 +92,10 @@ check for nil UUIDs, or print the nil UUID.
 
 -}
 
--- TODO add reading version 1&2??
--- TODO MORE TESTS
-
 import Bitwise
 import Bytes exposing (Bytes, Endianness(..))
 import Bytes.Decode
+import Bytes.Decode.Extra
 import Bytes.Encode
 import Bytes.Extra
 import MD5
@@ -132,30 +130,26 @@ type UUID
 
 
 {-| This enumerates all the possible errors that can happen when reading
-existing UUIDs. Note that `StringInWrongFormat` cannot occur while using `fromBytes`.
+existing UUIDs.
 
     import Bytes.Extra exposing (fromByteValues)
 
+    -- Note the non-hexadecimal characters in this string!
     fromString "12345678-9abc-4567-89ab-cdefghijklmn"
     --> Err WrongFormat
 
     fromBytes (fromByteValues [ 223 ])
     --> Err WrongLength
 
+    -- This package only supports variant 1 UUIDs
     fromString "urn:uuid:12345678-9abc-4567-c234-abcd12345678"
     --> Err UnsupportedVariant
-
-    fromString "12345678-9ABC-4567-1234-ABCD12345678"
-    --> Err NoVariant
 
     fromBytes (fromByteValues [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     --> Err IsNil
 
     fromString "{00000000-0000-0000-0000-000000000000}"
     --> Err IsNil
-
-    fromString "6ba7b814-9dad-21d1-80b4-00c04fd430c8"
-    --> Err UnsupportedVersion
 
     fromString "6ba7b814-9dad-71d1-80b4-00c04fd430c8"
     --> Err NoVersion
@@ -165,9 +159,7 @@ type Error
     = WrongFormat
     | WrongLength
     | UnsupportedVariant
-    | NoVariant
     | IsNil
-    | UnsupportedVersion
     | NoVersion
 
 
@@ -272,24 +264,30 @@ too much whitespace, too many (or not enough) hyphens, or uppercase characters.
         |> Result.map version
     --> Ok 3
 
-    fromString "c6d62c23-3406-5fc7-836e-9d6bef13e18c"
-    --> Ok (forName "elm-lang.org" dnsNamespace)
+    fromString "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    --> Ok dnsNamespace
 
 -}
 fromString : String -> Result Error UUID
 fromString string =
     let
         normalized =
-            String.replace "-" "" <|
-                String.toLower <|
-                    if String.startsWith "urn:uuid:" string then
-                        String.dropLeft 9 string
+            string
+                |> String.replace "\n" ""
+                |> String.replace "\t" ""
+                |> String.replace " " ""
+                |> String.replace "-" ""
+                |> String.toLower
+                |> (\str ->
+                        if String.startsWith "urn:uuid:" str then
+                            String.dropLeft 9 str
 
-                    else if String.startsWith "{" string && String.endsWith "}" string then
-                        String.slice 1 -1 string
+                        else if String.startsWith "{" str && String.endsWith "}" str then
+                            String.slice 1 -1 str
 
-                    else
-                        string
+                        else
+                            str
+                   )
     in
     if String.length normalized /= 32 then
         Err WrongLength
@@ -325,54 +323,101 @@ in this package, so you should only expect the returned `Int` to be `3`, `4` or
 -}
 version : UUID -> Int
 version (UUID _ b _ _) =
-    -- Version bits are stored in the 13th to 1th least significant bits of b.
+    -- Version bits are stored in the 13th to 10th least significant bits of b.
     -- The value of this "nibble" (4 bits) == the version.
     Bitwise.shiftRightZfBy 12 b
         |> Bitwise.and 0x0F
 
 
-variant : UUID -> Int
-variant (UUID _ _ c _) =
-    -- Variant bits are stored in the most significant 3 bits of c. c is treated
-    -- as a 32-bit number. 32 - 3 = 29, so shift right by 29. 0b100 or 0b101
-    -- implies variant 1, 0b110 implies variant 2.
-    case Bitwise.shiftRightZfBy 29 c of
-        4 ->
-            -- 0b100
-            1
-
-        5 ->
-            -- 0b101
-            1
-
-        6 ->
-            -- 0b110
-            2
-
-        _ ->
-            -- This branch will not occur in a well-formed UUID
-            0
+isVariant1 : UUID -> Bool
+isVariant1 (UUID _ _ c _) =
+    -- The 2 most significant bits of c have to be 0b10 for it to be Variant 1
+    Bitwise.shiftRightZfBy 30 c == 2
 
 
 
 -- NAMESPACED UUIDS
 
 
-{-| TODO write doc
+{-| Create a version 5 UUID from a `String` and a namespace, which should be a
+`UUID`. The same name and namespace will always produce the same UUID, which can
+be used to your advantage. Furthermore, the UUID created from this can be used
+as a namespace for another UUID, creating a hierarchy of sorts.
+
+    apiNamespace : UUID
+    apiNamespace =
+        forName "https://api.example.com/v2/" dnsNamespace
+
+    widgetNamespace : UUID
+    widgetNamespace =
+        forName "Widget" apiNamespace
+
+
+    toString apiNamespace
+    --> "bad122ad-b5b6-527c-b544-4406328d8b13"
+
+    toString widgetNamespace
+    --> "7b0db628-d793-550b-a883-937a276f4908"
+
 -}
 forName : String -> UUID -> UUID
 forName =
     forBytes << Bytes.Encode.encode << Bytes.Encode.string
 
 
-{-| TODO write doc
+{-| Similar to [`forName`](#forName), creates a UUID based on the given String
+and namespace UUID, but creates a version 3 UUID. If you can choose between the
+two, it is recommended that you choose version 5 UUIDs.
+
+    apiNamespace : UUID
+    apiNamespace =
+        forNameV3 "https://api.example.com/v1/" dnsNamespace
+
+    toString apiNamespace
+    --> "f72dd2ff-b8e7-3c58-afe1-352d5e273de4"
+
 -}
 forNameV3 : String -> UUID -> UUID
 forNameV3 =
     forBytesV3 << Bytes.Encode.encode << Bytes.Encode.string
 
 
-{-| TODO write doc
+{-| Create a version 5 UUID from `Bytes` and a namespace, which should be a
+`UUID`. The same name and namespace will always produce the same UUID, which can
+be used to your advantage. Furthermore, the UUID created from this can be used
+as a namespace for another UUID, creating a hierarchy of sorts.
+
+    import Bytes
+    import Bytes.Encode
+
+    type alias Widget = { name: String, value: Float }
+
+    apiNamespace : UUID
+    apiNamespace =
+        forName "https://api.example.com/v2/" dnsNamespace
+
+    widgetNamespace : UUID
+    widgetNamespace =
+        forName "Widget" apiNamespace
+
+    uuidForWidget : Widget -> UUID
+    uuidForWidget { name, value } =
+        let
+           bytes =
+             Bytes.Encode.encode <| Bytes.Encode.sequence
+                [ Bytes.Encode.unsignedInt32 Bytes.BE (String.length name)
+                , Bytes.Encode.string name
+                , Bytes.Encode.float64 Bytes.BE value
+                ]
+        in
+        forBytes bytes widgetNamespace
+
+
+    Widget "Exponent" 0.233
+        |> uuidForWidget
+        |> toString
+    --> "46dab34b-5447-5c5c-8e24-fe4e3daab014"
+
 -}
 forBytes : Bytes -> UUID -> UUID
 forBytes bytes namespace =
@@ -386,7 +431,21 @@ forBytes bytes namespace =
         |> toVariant1
 
 
-{-| TODO write doc
+{-| Similar to [`forBytes`](#forBytes), creates a UUID based on the given Bytes
+and namespace UUID, but creates a version 3 UUID. If you can choose between the
+two, it is recommended that you choose version 5 UUIDs.
+
+    import Bytes
+    import Bytes.Encode
+
+    apiNamespace : UUID
+    apiNamespace =
+        forName "https://api.example.com/v2/" dnsNamespace
+
+    forBytesV3 (Bytes.Encode.encode (Bytes.Encode.unsignedInt8 245)) apiNamespace
+        |> toString
+    --> "4ad1f4bf-cf83-3c1d-b4f5-975f7d0fc9ba"
+
 -}
 forBytesV3 : Bytes -> UUID -> UUID
 forBytesV3 bytes namespace =
@@ -469,7 +528,19 @@ nilRepresentation representation =
 -- BINARY REPRESENTATION
 
 
-{-| TODO Write documentation
+{-| You can attempt to create a UUID from some `Bytes`, the only contents of which much be the UUID.
+
+    import Bytes.Extra exposing (fromByteValues)
+
+    fromBytes (fromByteValues [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    --> Err IsNil
+
+    fromBytes (fromByteValues [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    --> Err WrongLength
+
+    fromBytes (fromByteValues [0x6b, 0xa7, 0xb8, 0x14, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8])
+    --> Ok x500Namespace
+
 -}
 fromBytes : Bytes -> Result Error UUID
 fromBytes bytes =
@@ -477,14 +548,49 @@ fromBytes bytes =
         Err WrongLength
 
     else
-        Bytes.Decode.decode decoder bytes
+        Bytes.Decode.decode resultDecoder bytes
             |> Maybe.withDefault (Err WrongLength)
 
 
-{-| TODO EXPOSE AND WRITE DOCUMENTATION
+{-| A `Bytes.Decode.Decoder`, for integrating with a broader decode.
+
+    import Bytes
+    import Bytes.Decode exposing (Decoder)
+    import Bytes.Extra exposing (fromByteValues)
+
+    type alias Record =
+        { name : String
+        , value : Int
+        , id : UUID
+        }
+
+    recordDecoder : Decoder Record
+    recordDecoder =
+        Bytes.Decode.map3 Record
+            (Bytes.Decode.unsignedInt16 Bytes.BE |> Bytes.Decode.andThen Bytes.Decode.string)
+            (Bytes.Decode.unsignedInt32 Bytes.BE)
+            UUID.decoder
+
+    Bytes.Decode.decode recordDecoder <| fromByteValues
+        [ 0x00, 0x0b -- 11
+        , 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64 -- "hello world"
+        , 0x00, 0x00, 0x00, 0xFF -- 255
+        , 0x6b, 0xa7, 0xb8, 0x11, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 -- UUID
+        ]
+    --> Just
+    -->     { name = "hello world"
+    -->     , value = 255
+    -->     , id = urlNamespace
+    -->     }
+
 -}
-decoder : Bytes.Decode.Decoder (Result Error UUID)
+decoder : Bytes.Decode.Decoder UUID
 decoder =
+    Bytes.Decode.Extra.onlyOks resultDecoder
+
+
+resultDecoder : Bytes.Decode.Decoder (Result Error UUID)
+resultDecoder =
     Bytes.Decode.map4 fromInt32s
         (Bytes.Decode.unsignedInt32 BE)
         (Bytes.Decode.unsignedInt32 BE)
@@ -492,14 +598,39 @@ decoder =
         (Bytes.Decode.unsignedInt32 BE)
 
 
-{-| TODO documentation
+{-| Convert a UUID to `Bytes`.
+
+    import Bytes.Extra exposing (toByteValues)
+
+    toBytes dnsNamespace
+        |> toByteValues
+    --> [0x6b, 0xa7, 0xb8, 0x10, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8]
+
 -}
 toBytes : UUID -> Bytes
 toBytes =
     Bytes.Encode.encode << encoder
 
 
-{-| TODO documentation
+{-| An encoder for encoding data that includes a UUID.
+
+    import Bytes.Extra exposing (toByteValues)
+    import Bytes.Encode
+    import Bytes.Encode.Extra
+
+    defaultNamespaces : List UUID
+    defaultNamespaces =
+        [ dnsNamespace, urlNamespace, oidNamespace, x500Namespace ]
+
+    Bytes.Encode.Extra.list UUID.encoder defaultNamespaces
+        |> Bytes.Encode.encode
+        |> toByteValues
+    --> [ 0x6b, 0xa7, 0xb8, 0x10, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8
+    --> , 0x6b, 0xa7, 0xb8, 0x11, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8
+    --> , 0x6b, 0xa7, 0xb8, 0x12, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8
+    --> , 0x6b, 0xa7, 0xb8, 0x14, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8
+    --> ]
+
 -}
 encoder : UUID -> Bytes.Encode.Encoder
 encoder (UUID a b c d) =
@@ -602,27 +733,15 @@ fromInt32s a b c d =
     let
         wouldBeUUID =
             UUID a b c d
-
-        wouldBeVersion =
-            version wouldBeUUID
-
-        wouldBeVariant =
-            variant wouldBeUUID
     in
     if a == 0 && b == 0 && c == 0 && d == 0 then
         Err IsNil
 
-    else if wouldBeVersion < 1 || wouldBeVersion > 5 then
+    else if version wouldBeUUID > 5 then
         Err NoVersion
 
-    else if wouldBeVersion == 1 || wouldBeVersion == 2 then
-        Err UnsupportedVersion
-
-    else if wouldBeVariant == 2 then
+    else if not (isVariant1 wouldBeUUID) then
         Err UnsupportedVariant
-
-    else if wouldBeVariant /= 1 then
-        Err NoVariant
 
     else
         Ok wouldBeUUID

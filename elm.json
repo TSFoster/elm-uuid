@@ -9,7 +9,7 @@
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
-        "TSFoster/elm-bytes-extra": "1.0.2 <= v < 2.0.0",
+        "TSFoster/elm-bytes-extra": "1.1.0 <= v < 2.0.0",
         "TSFoster/elm-md5": "2.0.0 <= v < 3.0.0",
         "TSFoster/elm-sha1": "2.1.0 <= v < 3.0.0",
         "elm/bytes": "1.0.8 <= v < 2.0.0",
