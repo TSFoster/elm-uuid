@@ -247,7 +247,7 @@ generator =
 randomU32 : Random.Generator Int
 randomU32 =
     Random.int Random.minInt Random.maxInt
-        |> Random.map (Bitwise.shiftRightZfBy 0)
+        |> Random.map forceUnsigned
 
 
 {-| You can attempt to create a UUID from a string. This function can interpret
@@ -705,12 +705,12 @@ x500Namespace =
 
 toVersion : Int -> UUID -> UUID
 toVersion v (UUID a b c d) =
-    UUID a (Bitwise.or (Bitwise.shiftLeftBy 12 v) (Bitwise.and 0xFFFF0FFF b) |> Bitwise.shiftRightZfBy 0) c d
+    UUID a (Bitwise.or (Bitwise.shiftLeftBy 12 v) (Bitwise.and 0xFFFF0FFF b) |> forceUnsigned) c d
 
 
 toVariant1 : UUID -> UUID
 toVariant1 (UUID a b c d) =
-    UUID a b (Bitwise.or 0x80000000 (Bitwise.and 0x3FFFFFFF c) |> Bitwise.shiftRightZfBy 0) d
+    UUID a b (Bitwise.or 0x80000000 (Bitwise.and 0x3FFFFFFF c) |> forceUnsigned) d
 
 
 fromByteValuesUnchecked : List Int -> UUID
@@ -718,7 +718,11 @@ fromByteValuesUnchecked ints =
     let
         int32 : Int -> Int -> Int -> Int -> Int
         int32 a b c d =
-            d + Bitwise.shiftLeftBy 0x08 c + Bitwise.shiftLeftBy 0x10 b + Bitwise.shiftLeftBy 0x18 a
+            d
+                + Bitwise.shiftLeftBy 0x08 c
+                + Bitwise.shiftLeftBy 0x10 b
+                + Bitwise.shiftLeftBy 0x18 a
+                |> forceUnsigned
     in
     case ints of
         [ a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, d3, d4 ] ->
@@ -757,7 +761,7 @@ nibbleValuesToU32 a b c d e f g h =
         |> Bitwise.or (Bitwise.shiftLeftBy 0x14 c)
         |> Bitwise.or (Bitwise.shiftLeftBy 0x18 b)
         |> Bitwise.or (Bitwise.shiftLeftBy 0x1C a)
-        |> Bitwise.shiftRightZfBy 0
+        |> forceUnsigned
 
 
 toNibbleValue : Char -> Maybe Int
@@ -873,3 +877,8 @@ toHex acc int =
                         'f'
         in
         toHex (char :: acc) (Bitwise.shiftRightZfBy 4 int)
+
+
+forceUnsigned : Int -> Int
+forceUnsigned =
+    Bitwise.shiftRightZfBy 0
