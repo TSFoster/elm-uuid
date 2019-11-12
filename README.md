@@ -36,8 +36,16 @@ UUID.toString appID
 --> "2ed74b2b-10eb-5b44-93be-69aa8952caac"
 ```
 
+## Roadmap
 
-## Questions
+* More tests:
+  * test fromBytes explicitly
+  * fewer/simpler doc tests?
+  * test against set of known v3/v5 UUIDs
+  * split into smaller files?
+
+
+## Q&A
 
 ###### Which version UUID am I using?
 
