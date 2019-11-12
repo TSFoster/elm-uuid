@@ -106,7 +106,6 @@ import SHA1
 
 
 
--- TODO test randomness, make remark about securely generating a seed (see noredink's version)
 -- TODO rename to Uuid?
 -- TODO add variant 2 again???
 -- TODO add reading version 1&2??

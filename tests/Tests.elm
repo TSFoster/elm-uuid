@@ -5,6 +5,7 @@ import Fuzz exposing (Fuzzer)
 import Random exposing (Generator)
 import Regex exposing (Regex)
 import Result exposing (Result)
+import Set exposing (Set)
 import Shrink exposing (noShrink)
 import Test exposing (..)
 import UUID exposing (..)
@@ -41,6 +42,10 @@ suite =
             [ fuzz fuzzer "can convert to and from bytes without a problem" <|
                 \uuid -> Expect.equal (Ok uuid) (fromBytes (toBytes uuid))
             ]
+        , describe "Randomness" <|
+            [ fuzzWith { runs = 5 } seedFuzzer "No collisions in 1m UUIDs" <|
+                testRandomness 1000000 Set.empty
+            ]
         ]
 
 
@@ -51,6 +56,34 @@ suite =
 fuzzer : Fuzzer UUID
 fuzzer =
     Fuzz.custom generator noShrink
+
+
+seedFuzzer : Fuzzer Random.Seed
+seedFuzzer =
+    Fuzz.custom (Random.int Random.minInt Random.maxInt) noShrink
+        |> Fuzz.map Random.initialSeed
+
+
+
+-- TESTS
+
+
+testRandomness : Int -> Set String -> Random.Seed -> Expectation
+testRandomness remaining seen seed =
+    if remaining <= 0 then
+        Expect.pass
+
+    else
+        let
+            ( uuid, newSeed ) =
+                Random.step generator seed
+                    |> Tuple.mapFirst toString
+        in
+        if Set.member uuid seen then
+            Expect.fail "collision detected"
+
+        else
+            testRandomness (remaining - 1) (Set.insert uuid seen) newSeed
 
 
 
