@@ -1,7 +1,7 @@
 module UUID exposing
     ( UUID
     , fromString, Error(..)
-    , generator
+    , generator, Seeds, step
     , forName, forBytes, forNameV3, forBytesV3
     , dnsNamespace, urlNamespace, oidNamespace, x500Namespace
     , fromBytes, decoder, toBytes, encoder
@@ -31,7 +31,7 @@ covers the vast majority of those in use (versions 1-5).
 
 ### Random UUIDs (Version 4)
 
-@docs generator
+@docs generator, Seeds, step
 
 
 ### Hierarchical, namespaced UUIDs (Version 3, Version 5)
@@ -228,6 +228,12 @@ way of making a UUID, and I see them used all the time. There are a couple of
 ways of using a generator to create a value, which are described nicely in the
 [elm/random docs][elm-random].
 
+**NOTE:** `Random.Seed`s have either 32 or 54 bits of randomness. That means
+that `UUID`s generated with this `Generator` will only ever be one of either
+4.3 billion or 18 quadrillion UUIDs. If that is not enough for your use
+case, check out [`step`](#step). It is also recommended that you [do not use
+`Random.generate`](https://github.com/elm/random/issues/2).
+
 [elm-random]: https://package.elm-lang.org/packages/elm/random/latest/
 
     import Random
@@ -242,6 +248,59 @@ generator : Random.Generator UUID
 generator =
     Random.map4 UUID randomU32 randomU32 randomU32 randomU32
         |> Random.map (toVersion 4 >> toVariant1)
+
+
+{-| -}
+type alias Seeds =
+    { seed1 : Random.Seed
+    , seed2 : Random.Seed
+    , seed3 : Random.Seed
+    , seed4 : Random.Seed
+    }
+
+
+{-| Properly using all of a randomly-generated UUID’s bits requires up to four
+`Random.Seed`s. How you generate them is up to you. You might want to check out
+[`Crypto.getRandomValues()`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues)
+though.
+
+Use four seeds to create a version 4 UUID and four new seeds.
+
+        import Random
+
+        s1 = Random.initialSeed 3684687
+        s2 = Random.initialSeed 3487532
+        s3 = Random.initialSeed 63374
+        s4 = Random.initialSeed 65483
+
+        step (Seeds s1 s2 s3 s4)
+          |> Tuple.first
+          |> toString
+
+        ---> "3d938336-567b-43b9-88d5-3703c2e63a0b"
+
+-}
+step : Seeds -> ( UUID, Seeds )
+step s =
+    let
+        ( int1, seed1 ) =
+            Random.step randomU32 s.seed1
+
+        ( int2, seed2 ) =
+            Random.step randomU32 s.seed2
+
+        ( int3, seed3 ) =
+            Random.step randomU32 s.seed3
+
+        ( int4, seed4 ) =
+            Random.step randomU32 s.seed4
+
+        uuid =
+            UUID int1 int2 int3 int4
+                |> toVersion 4
+                |> toVariant1
+    in
+    ( uuid, Seeds seed1 seed2 seed3 seed4 )
 
 
 randomU32 : Random.Generator Int

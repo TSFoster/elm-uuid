@@ -47,6 +47,19 @@ UUID.toString appID
 
 ## Q&A
 
+### Are the generated UUIDs random enough?
+
+Short answer: for most cases where you want to quickly generate a UUID on the
+client, probably.
+
+`Random.Seed` has either 32 or 54 bits of randomness, depending on your system
+Version 4 UUIDs should have 122 bits of randomness. You should consider [how
+best to generate your Seed][elmrandom2]. Although the API is a little messier
+than using `UUID.Generator`, it is recommended to try using `UUID.step`, so
+`UUID`s can be generated using four independent seeds. One way of generating the
+seeds would be to use [`Crypto.getRandomValues()`][getRandomValues] to create
+four 32-bit integers, and passing them in as flags or via ports.
+
 ### Which version UUID am I using?
 
 You can check what variant/version you are using by looking at one of the
@@ -94,6 +107,8 @@ Github][new-issue]?
 
 [UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 [new-issue]: https://github.com/TSFoster/elm-uuid/issues/new
+[elmrandom2]: https://github.com/elm/random/issues/2
+[getRandomValues]: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 [rfc]: https://tools.ietf.org/html/rfc4122
 [generator]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#generator
 [forName]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#forName
