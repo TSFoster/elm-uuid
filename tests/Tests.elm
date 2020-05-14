@@ -36,6 +36,10 @@ suite =
                 \uuid ->
                     Expect.true (toRepresentation Guid uuid ++ " is not in Microsoft’s textual representation of GUIDs") <|
                         isGuidFormat (toRepresentation Guid uuid)
+            , fuzz fuzzer "Compact" <|
+                \uuid ->
+                    Expect.true (toRepresentation Compact uuid ++ " is not in a compact respresentation") <|
+                        isCompactFormat (toRepresentation Compact uuid)
             , fuzz fuzzer "URN" <|
                 \uuid ->
                     Expect.true (toRepresentation Urn uuid ++ " is not a correctly-formatted URN for the UUID") <|
@@ -66,6 +70,8 @@ suite =
                 \_ -> Expect.ok (fromString "12345678-1234-4234-8888-abcdefabcdef")
             , test "reads version 5 UUIDs" <|
                 \_ -> Expect.ok (fromString "12345678-1234-5234-8888-abcdefabcdef")
+            , test "reads UUIDs with missing dashes" <|
+                \_ -> Expect.ok (fromString "12345678123412348888abcdefabcdef")
             , test "doesn't read variant 0 UUIDs" <|
                 \_ -> Expect.err (fromString "12345678-1234-1234-0888-abcdefabcdef")
             , test "doesn't read variant 2 UUIDs" <|
@@ -129,6 +135,11 @@ isGuidFormat =
     Regex.contains guidRegex
 
 
+isCompactFormat : String -> Bool
+isCompactFormat =
+    Regex.contains compactRegex
+
+
 canonicalRegex : Regex
 canonicalRegex =
     Regex.fromString ("^" ++ uuidRegexString ++ "$")
@@ -144,6 +155,12 @@ urnRegex =
 guidRegex : Regex
 guidRegex =
     Regex.fromString ("^\\{" ++ uuidRegexString ++ "\\}$")
+        |> Maybe.withDefault Regex.never
+
+
+compactRegex : Regex
+compactRegex =
+    Regex.fromString "[0-f]{12}[1-5][0-f]{3}[8-d][0-f]{15}"
         |> Maybe.withDefault Regex.never
 
 

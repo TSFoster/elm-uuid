@@ -71,7 +71,7 @@ UUIDs are generally represented by 32 hexadecimal digits in the form
 denote the UUID version, and the first two or three bits at position `N` denote
 the variant. This is the "canonical" representation, but there is also a URN
 representation and a format used mostly by Microsoft, where they are more
-commonly named GUIDs.
+commonly named GUIDs. Additionally, some APIs do not use the dashes.
 
 @docs toString, toRepresentation, Representation
 
@@ -165,12 +165,14 @@ type Error
 
 {-| There are three typical human-readable representations of UUID: canonical, a
 Uniform Resource Name and Microsoft's formatting for its GUIDs (which are just
-version 4 UUIDs nowadays).
+version 4 UUIDs nowadays). Additionally, some APIs do not use the dashes, which
+has been named `Compact` here.
 -}
 type Representation
     = Canonical
     | Urn
     | Guid
+    | Compact
 
 
 
@@ -185,15 +187,20 @@ type Representation
 
 -}
 toString : UUID -> String
-toString (UUID a b c d) =
+toString =
+    toStringWith "-"
+
+
+toStringWith : String -> UUID -> String
+toStringWith sep (UUID a b c d) =
     String.padLeft 8 '0' (toHex [] a)
-        ++ "-"
+        ++ sep
         ++ String.padLeft 4 '0' (toHex [] (Bitwise.shiftRightZfBy 16 b))
-        ++ "-"
+        ++ sep
         ++ String.padLeft 4 '0' (toHex [] (Bitwise.and 0xFFFF b))
-        ++ "-"
+        ++ sep
         ++ String.padLeft 4 '0' (toHex [] (Bitwise.shiftRightZfBy 16 c))
-        ++ "-"
+        ++ sep
         ++ String.padLeft 4 '0' (toHex [] (Bitwise.and 0xFFFF c))
         ++ String.padLeft 8 '0' (toHex [] d)
 
@@ -209,6 +216,9 @@ toString (UUID a b c d) =
     toRepresentation Guid dnsNamespace
     --> "{6ba7b810-9dad-11d1-80b4-00c04fd430c8}"
 
+    toRepresentation Compact dnsNamespace
+    --> "6ba7b8109dad11d180b400c04fd430c8"
+
 -}
 toRepresentation : Representation -> UUID -> String
 toRepresentation representation uuid =
@@ -221,6 +231,9 @@ toRepresentation representation uuid =
 
         Guid ->
             "{" ++ toString uuid ++ "}"
+
+        Compact ->
+            toStringWith "" uuid
 
 
 {-| Generating a random UUID (version 4) is, I think, the most straightforward
@@ -581,6 +594,9 @@ nilRepresentation representation =
 
         Guid ->
             "{" ++ nilString ++ "}"
+
+        Compact ->
+            "00000000000000000000000000000000"
 
 
 
