@@ -11,7 +11,7 @@
     "dependencies": {
         "TSFoster/elm-bytes-extra": "1.1.0 <= v < 2.0.0",
         "TSFoster/elm-md5": "2.0.0 <= v < 3.0.0",
-        "TSFoster/elm-sha1": "2.1.0 <= v < 3.0.0",
+        "TSFoster/elm-sha1": "2.1.1 <= v < 3.0.0",
         "elm/bytes": "1.0.8 <= v < 2.0.0",
         "elm/core": "1.0.0 <= v < 2.0.0",
         "elm/random": "1.0.0 <= v < 2.0.0"
