@@ -6,6 +6,7 @@ module UUID exposing
     , dnsNamespace, urlNamespace, oidNamespace, x500Namespace
     , fromBytes, decoder, toBytes, encoder
     , toString, toRepresentation, Representation(..)
+    , jsonDecoder, toValue, toValueWithRepresentation
     , version
     , nilBytes, isNilBytes, nilString, isNilString, nilRepresentation
     )
@@ -78,6 +79,11 @@ commonly named GUIDs. Additionally, some APIs do not use the dashes.
 @docs toString, toRepresentation, Representation
 
 
+## JSON
+
+@docs jsonDecoder, toValue, toValueWithRepresentation
+
+
 ## Inspecting UUIDs
 
 @docs version
@@ -100,6 +106,8 @@ import Bytes.Decode
 import Bytes.Decode.Extra
 import Bytes.Encode
 import Bytes.Extra
+import Json.Decode
+import Json.Encode
 import MD5
 import Random
 import Result exposing (Result)
@@ -377,6 +385,57 @@ fromString string =
 
             _ ->
                 Err WrongFormat
+
+
+
+-- JSON
+
+
+{-| Decode a UUID from a JSON string.
+-}
+jsonDecoder : Json.Decode.Decoder UUID
+jsonDecoder =
+    Json.Decode.andThen stringToJsonDecoder Json.Decode.string
+
+
+stringToJsonDecoder : String -> Json.Decode.Decoder UUID
+stringToJsonDecoder string =
+    case fromString string of
+        Ok uuid ->
+            Json.Decode.succeed uuid
+
+        Err WrongFormat ->
+            Json.Decode.fail "UUID is in wrong format"
+
+        Err WrongLength ->
+            Json.Decode.fail "UUID is wrong length"
+
+        Err UnsupportedVariant ->
+            Json.Decode.fail "UUID is an unsupported variant"
+
+        Err IsNil ->
+            Json.Decode.fail "UUID is nil"
+
+        Err NoVersion ->
+            Json.Decode.fail "UUID is not properly versioned"
+
+
+{-| Encode a UUID to a JSON Value (as a canonical string).
+-}
+toValue : UUID -> Json.Encode.Value
+toValue =
+    toString >> Json.Encode.string
+
+
+{-| Encode a UUID to a JSON Value (as a string with a given (Representation)[#Representation]).
+-}
+toValueWithRepresentation : Representation -> UUID -> Json.Encode.Value
+toValueWithRepresentation represention =
+    toRepresentation represention >> Json.Encode.string
+
+
+
+-- INSPECTING
 
 
 {-| Get the version number of a `UUID`. Only versions 3, 4 and 5 are supported
