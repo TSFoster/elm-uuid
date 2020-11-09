@@ -18,6 +18,8 @@ Universally Unique (hence the name).
 This package supports variant 1 UUIDs (those outlined in [RFC 4122][rfc]), which
 covers the vast majority of those in use (versions 1-5).
 
+[rfc]: https://tools.ietf.org/html/rfc4122
+
 @docs UUID
 
 
