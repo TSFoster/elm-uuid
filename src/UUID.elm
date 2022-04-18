@@ -462,17 +462,11 @@ version (UUID _ b _ _) =
         |> Bitwise.and 0x0F
 
 
-isVariant1 : UUID -> Bool
-isVariant1 (UUID _ _ c _) =
-    -- The 2 most significant bits of c have to be 0b10 for it to be Variant 1
-    Bitwise.shiftRightZfBy 30 c == 2
-
-
-{-| Returns the relative ordering of two `UUID`s. The main use-case of this
-function is helping in binary-searching algorithms.
-Mimics the [`elm/core`'s `compare`](https://package.elm-lang.org/packages/elm/core/1.0.5/Basics#compare).
+{-| Returns the relative ordering of two `UUID`s. The main use case of this
+function is helping in binary-searching algorithms. Mimics [`elm/core`'s
+`compare`](https://package.elm-lang.org/packages/elm/core/1.0.5/Basics#compare).
 -}
-compare : UUID -> UUID -> Order
+compare : UUID -> UUID -> Basics.Order
 compare (UUID a1 b1 c1 d1) (UUID a2 b2 c2 d2) =
     case Basics.compare a1 a2 of
         EQ ->
@@ -490,6 +484,12 @@ compare (UUID a1 b1 c1 d1) (UUID a2 b2 c2 d2) =
 
         a ->
             a
+
+
+isVariant1 : UUID -> Bool
+isVariant1 (UUID _ _ c _) =
+    -- The 2 most significant bits of c have to be 0b10 for it to be Variant 1
+    Bitwise.shiftRightZfBy 30 c == 2
 
 
 
