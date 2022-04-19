@@ -1,7 +1,7 @@
 module Tests exposing (suite)
 
 import Bytes.Encode
-import Expect
+import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
 import Regex exposing (Regex)
 import Shrink exposing (noShrink)
@@ -82,6 +82,18 @@ suite =
                 \_ -> Expect.err (fromString "12345678-1234-1234-8888-abcdefabcdeff")
             , test "doesn't read non-hex UUIDs" <|
                 \_ -> Expect.err (fromString "12345678-1234-1234-8888-abcdefgabcde")
+            ]
+        , describe "compare"
+            [ test "equal UUIDs are EQ" <|
+                compareTest "12345678-1234-4234-8888-abcdefabcdef" EQ "12345678-1234-4234-8888-abcdefabcdef"
+            , test "lower UUIDs in the first quarter are LT" <|
+                compareTest "12245678-1234-4234-8888-abcdefabcdef" LT "12345678-1234-4234-8888-abcdefabcdef"
+            , test "greater UUIDs in the second quarter are GT" <|
+                compareTest "12345678-1244-4234-8888-abcdefabcdef" GT "12345678-1234-4234-8888-abcdefabcdef"
+            , test "lower UUIDs in the third quarter are LT" <|
+                compareTest "12345678-1234-4234-8878-abcdefabcdef" LT "12345678-1234-4234-8888-abcdefabcdef"
+            , test "greater UUIDs in the fourth quarter are GT" <|
+                compareTest "12345678-1234-4234-8888-abcdefabcdff" GT "12345678-1234-4234-8888-abcdefabcdef"
             ]
         ]
 
@@ -167,3 +179,13 @@ compactRegex =
 uuidRegexString : String
 uuidRegexString =
     "[0-f]{8}-[0-f]{4}-[1-5][0-f]{3}-[8-d][0-f]{3}-[0-f]{12}"
+
+
+
+-- COMPARE HELPER
+
+
+compareTest : String -> Basics.Order -> String -> () -> Expectation
+compareTest uuid1 order uuid2 () =
+    Expect.equal (Ok order) <|
+        Result.map2 UUID.compare (fromString uuid1) (fromString uuid2)
