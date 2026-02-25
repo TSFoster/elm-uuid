@@ -2,6 +2,7 @@ module UUID exposing
     ( UUID
     , fromString, Error(..)
     , generator, Seeds, step
+    , generatorV7, V7State, initialV7State, stepV7
     , forName, forBytes, forNameV3, forBytesV3
     , dnsNamespace, urlNamespace, oidNamespace, x500Namespace
     , fromBytes, decoder, toBytes, encoder
@@ -16,10 +17,12 @@ be used as an identifier for anything. Each 128-bit number, usually represented
 as 32 hexadecimal digits, is generally used under the assumption that it is
 Universally Unique (hence the name).
 
-This package supports variant 1 UUIDs (those outlined in [RFC 4122][rfc]), which
-covers the vast majority of those in use (versions 1-5).
+This package supports variant 1 UUIDs (those outlined in [RFC 4122][rfc4122] and
+[RFC 9562][rfc9562]), which covers the vast majority of those in use
+(versions 1-8).
 
-[rfc]: https://tools.ietf.org/html/rfc4122
+[rfc4122]: https://tools.ietf.org/html/rfc4122
+[rfc9562]: https://www.rfc-editor.org/rfc/rfc9562.html
 
 @docs UUID
 
@@ -35,6 +38,15 @@ covers the vast majority of those in use (versions 1-5).
 ### Random UUIDs (Version 4)
 
 @docs generator, Seeds, step
+
+
+### Time-based random UUIDs (Version 7)
+
+Version 7 UUIDs contain a Unix timestamp in milliseconds and random data,
+making them both unique and time-sortable. This is useful when UUIDs are used
+as database primary keys, as it improves index locality.
+
+@docs generatorV7, V7State, initialV7State, stepV7
 
 
 ### Hierarchical, namespaced UUIDs (Version 3, Version 5)
@@ -112,6 +124,7 @@ import MD5
 import Random
 import Result exposing (Result)
 import SHA1
+import Time
 
 
 
@@ -161,7 +174,7 @@ existing UUIDs.
     fromString "{00000000-0000-0000-0000-000000000000}"
     --> Err IsNil
 
-    fromString "6ba7b814-9dad-71d1-80b4-00c04fd430c8"
+    fromString "6ba7b814-9dad-91d1-80b4-00c04fd430c8"
     --> Err NoVersion
 
 -}
@@ -332,6 +345,124 @@ randomU32 =
         |> Random.map forceUnsigned
 
 
+{-| Generate a random version 7 UUID from a given timestamp. Version 7 UUIDs
+(defined in [RFC 9562][rfc9562]) contain a 48-bit Unix timestamp in milliseconds
+and random data, making them time-sortable.
+
+For generating multiple UUIDs within the same millisecond with a guaranteed
+monotonic order, see [`stepV7`](#stepV7).
+
+[rfc9562]: https://www.rfc-editor.org/rfc/rfc9562.html
+
+    import Random
+    import Time
+
+    Random.step (UUID.generatorV7 (Time.millisToPosix 1234567890000)) (Random.initialSeed 42)
+        |> Tuple.first
+        |> UUID.version
+    --> 7
+
+-}
+generatorV7 : Time.Posix -> Random.Generator UUID
+generatorV7 posix =
+    let
+        millis =
+            Time.posixToMillis posix
+
+        a =
+            millis // 65536 |> forceUnsigned
+
+        bUpper =
+            Bitwise.shiftLeftBy 16 (modBy 65536 millis) |> forceUnsigned
+    in
+    Random.map3
+        (\randA randC randD ->
+            UUID a (Bitwise.or bUpper (Bitwise.and 0x0FFF randA) |> forceUnsigned) randC randD
+                |> toVersion 7
+                |> toVariant1
+        )
+        randomU32
+        randomU32
+        randomU32
+
+
+{-| State used by [`stepV7`](#stepV7) to generate monotonically increasing
+version 7 UUIDs within the same millisecond.
+-}
+type V7State
+    = V7State Random.Seed Int
+
+
+{-| Create an initial [`V7State`](#V7State) with the counter starting at 0,
+allowing up to 4096 monotonic increments before the 12-bit counter wraps.
+
+    import Random
+
+    Random.step UUID.initialV7State (Random.initialSeed 42)
+        |> Tuple.first
+        --> a V7State value
+
+-}
+initialV7State : Random.Generator V7State
+initialV7State =
+    Random.map (\seed -> V7State seed 0) Random.independentSeed
+
+
+{-| Generate a version 7 UUID with a monotonically increasing counter.
+Each call increments the 12-bit counter in the `rand_a` field, ensuring
+that UUIDs generated with the same timestamp are ordered.
+
+When the timestamp changes between calls, the UUIDs are naturally ordered
+by their timestamp, regardless of the counter value.
+
+    import Random
+    import Time
+
+    time : Time.Posix
+    time = Time.millisToPosix 1234567890000
+
+    ( state0, _ ) = Random.step UUID.initialV7State (Random.initialSeed 42)
+
+    ( uuid1, state1 ) = UUID.stepV7 time state0
+
+    ( uuid2, _ ) = UUID.stepV7 time state1
+
+    UUID.compare uuid1 uuid2
+    --> LT
+
+-}
+stepV7 : Time.Posix -> V7State -> ( UUID, V7State )
+stepV7 posix (V7State seed counter) =
+    let
+        millis =
+            Time.posixToMillis posix
+
+        a =
+            millis // 65536 |> forceUnsigned
+
+        bUpper =
+            Bitwise.shiftLeftBy 16 (modBy 65536 millis) |> forceUnsigned
+
+        randA =
+            Bitwise.and 0x0FFF counter
+
+        b =
+            Bitwise.or bUpper randA |> forceUnsigned
+
+        ( randInt1, seed1 ) =
+            Random.step randomU32 seed
+
+        ( randInt2, seed2 ) =
+            Random.step randomU32 seed1
+
+        uuid =
+            UUID a b randInt1 randInt2
+                |> toVersion 7
+                |> toVariant1
+    in
+    ( uuid, V7State seed2 (counter + 1) )
+
+
 {-| You can attempt to create a UUID from a string. This function can interpret
 a fairly broad range of formatted (and mis-formatted) UUIDs, including ones with
 too much whitespace, too many (or not enough) hyphens, or uppercase characters.
@@ -438,9 +569,8 @@ toValueWithRepresentation represention =
 -- INSPECTING
 
 
-{-| Get the version number of a `UUID`. Only versions 3, 4 and 5 are supported
-in this package, so you should only expect the returned `Int` to be `3`, `4` or
-`5`.
+{-| Get the version number of a `UUID`. Versions 1-8 are supported for parsing.
+This package can create versions 3, 4, 5 and 7.
 
     import Random
 
@@ -901,7 +1031,7 @@ fromInt32s a b c d =
     if a == 0 && b == 0 && c == 0 && d == 0 then
         Err IsNil
 
-    else if version wouldBeUUID > 5 then
+    else if version wouldBeUUID > 8 then
         Err NoVersion
 
     else if not (isVariant1 wouldBeUUID) then

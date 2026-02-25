@@ -4,7 +4,6 @@ import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
 import Random
 import Set exposing (Set)
-import Shrink exposing (noShrink)
 import Test exposing (Test, describe, fuzzWith)
 import UUID exposing (generator, toString)
 
@@ -12,14 +11,14 @@ import UUID exposing (generator, toString)
 suite : Test
 suite =
     describe "Generator is sufficiently random"
-        [ fuzzWith { runs = 5 } seedFuzzer "No collisions in 1m UUIDs" <|
+        [ fuzzWith { runs = 5, distribution = Test.noDistribution } seedFuzzer "No collisions in 1m UUIDs" <|
             testRandomness 1000000 Set.empty
         ]
 
 
 seedFuzzer : Fuzzer Random.Seed
 seedFuzzer =
-    Fuzz.custom (Random.int Random.minInt Random.maxInt) noShrink
+    Fuzz.fromGenerator (Random.int Random.minInt Random.maxInt)
         |> Fuzz.map Random.initialSeed
 
 
