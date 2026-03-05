@@ -11,7 +11,6 @@ the reading of all variant 1 UUIDs (versions 1-8, those outlined in [RFC
 4122][rfc4122] and [RFC 9562][rfc9562]), and the creation of versions 3, 4, 5
 and 7. This covers the vast majority of UUIDs in use today.
 
-
 ## Examples
 
 ```elm
@@ -43,7 +42,7 @@ Random.initialSeed 42
     |> Random.step (UUID.generatorV7 (Time.millisToPosix 1700000000000))
     |> Tuple.first
     |> UUID.toString
---> a v7 UUID with timestamp 1700000000000 embedded
+--> "018bcfe5-6800-73f5-ac02-f1308d0b9e34"
 
 
 -- Monotonic v7 UUIDs within the same millisecond
@@ -54,17 +53,17 @@ let
     ( uuid2, _ ) = UUID.stepV7 time state1
 in
 UUID.compare uuid1 uuid2
---> LT (uuid1 < uuid2, guaranteed)
+--> LT
+-- uuid1 < uuid2, guaranteed
 ```
 
 ## Roadmap
 
-* More tests:
-  * test fromBytes explicitly
-  * fewer/simpler doc tests?
-  * test against set of known v3/v5 UUIDs
-  * split into smaller files?
-
+- More tests:
+  - test fromBytes explicitly
+  - fewer/simpler doc tests?
+  - test against set of known v3/v5 UUIDs
+  - split into smaller files?
 
 ## Q&A
 
@@ -113,7 +112,7 @@ I can.
 
 ### I need to create version 1/2 UUIDs
 
-This can't *reaallly* be done in the browser (as far as I know), but feel free
+This can't _reaallly_ be done in the browser (as far as I know), but feel free
 to [open an issue on Github][new-issue] anyway.
 
 ### I need variant 0 UUIDs!
@@ -124,7 +123,6 @@ Really!? Umm, well I guess you'd better [open an issue on Github][new-issue].
 
 This might be better suited in a separate package, but why not [open an issue on
 Github][new-issue]?
-
 
 [UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 [new-issue]: https://github.com/TSFoster/elm-uuid/issues/new

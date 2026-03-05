@@ -398,9 +398,10 @@ allowing up to 4096 monotonic increments before the 12-bit counter wraps.
 
     import Random
 
-    Random.step UUID.initialV7State (Random.initialSeed 42)
-        |> Tuple.first
-        --> a V7State value
+    v7State =
+        Random.initialSeed 42
+            |> Random.step UUID.initialV7State
+            |> Tuple.first
 
 -}
 initialV7State : Random.Generator V7State
@@ -421,13 +422,16 @@ by their timestamp, regardless of the counter value.
     time : Time.Posix
     time = Time.millisToPosix 1234567890000
 
-    ( state0, _ ) = Random.step UUID.initialV7State (Random.initialSeed 42)
+    result : Basics.Order
+    result =
+        let
+            ( state0, _ ) = Random.step UUID.initialV7State (Random.initialSeed 42)
+            ( uuid1, state1 ) = UUID.stepV7 time state0
+            ( uuid2, _ ) = UUID.stepV7 time state1
+        in
+            UUID.compare uuid1 uuid2
 
-    ( uuid1, state1 ) = UUID.stepV7 time state0
-
-    ( uuid2, _ ) = UUID.stepV7 time state1
-
-    UUID.compare uuid1 uuid2
+    result
     --> LT
 
 -}
