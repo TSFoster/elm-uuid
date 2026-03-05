@@ -7,10 +7,9 @@ functions for reading, creating, randomly generating, inspecting and formatting
 UUIDs.
 
 There are several versions and variants of UUID. This package supports
-the reading of all variant 1 UUIDs (versions 1-5, those outlined in [RFC
-4122][rfc]), and the creation of versions 3, 4 and 5. This covers the vast
-majority of UUIDs in use today.
-
+the reading of all variant 1 UUIDs (versions 1-8, those outlined in [RFC
+9562][rfc9562], previously [RFC 4122][rfc4122]), and the creation of versions 3,
+4, 5 and 7. This covers the vast majority of UUIDs in use today.
 
 ## Examples
 
@@ -34,16 +33,37 @@ appID = UUID.forName "myapplication.com" UUID.dnsNamespace
 
 UUID.toString appID
 --> "2ed74b2b-10eb-5b44-93be-69aa8952caac"
+
+
+-- Version 7: time-sortable UUIDs (RFC 9562)
+import Time
+
+Random.initialSeed 42
+    |> Random.step (UUID.generatorV7 (Time.millisToPosix 1700000000000))
+    |> Tuple.first
+    |> UUID.toString
+--> "018bcfe5-6800-73f5-ac02-f1308d0b9e34"
+
+
+-- Monotonic v7 UUIDs within the same millisecond
+let
+    time = Time.millisToPosix 1700000000000
+    ( state, _ ) = Random.step UUID.initialV7State (Random.initialSeed 42)
+    ( uuid1, state1 ) = UUID.stepV7 time state
+    ( uuid2, _ ) = UUID.stepV7 time state1
+in
+UUID.compare uuid1 uuid2
+--> LT
+-- uuid1 < uuid2, guaranteed
 ```
 
 ## Roadmap
 
-* More tests:
-  * test fromBytes explicitly
-  * fewer/simpler doc tests?
-  * test against set of known v3/v5 UUIDs
-  * split into smaller files?
-
+- More tests:
+  - test fromBytes explicitly
+  - fewer/simpler doc tests?
+  - test against set of known v3/v5 UUIDs
+  - split into smaller files?
 
 ## Q&A
 
@@ -66,24 +86,24 @@ You can check what variant/version you are using by looking at one of the
 UUIDs, which should be in the format `00000000-0000-A000-B000-000000000000`.
 If the character at position `B` is `8`, `9`, `a` or `b`, you have a variant 1
 UUID, and this package is for you! The character in position `A` is the version
-number. (If it isn't `1`, `2`, `3`, `4` or `5`, then it isn't a UUID as defined
-by the [RFC][rfc].)
+number. (If it isn't `1`-`8`, then it isn't a UUID as defined
+by [RFC 9562][rfc9562].)
 
 ### Which version UUID should I use?
 
-Probably either version 4 or 5, depending on your use case. Version 4 UUIDs
-are randomly generated, while version 5 UUIDs are created from a "name" and
-a "namespace", such that the same "name" and "namespace" produces the same
-UUID.
+Probably version 4, 5 or 7, depending on your use case:
 
-If you want to use the UUID as a key for a value that may change over
-time, you may want to use [`generator`][generator] to create version 4 UUIDs.
-
-If the UUID will refer to something that will not change over time, or will
-need to be calculated in some other way from some input data, consider using
-[`forName`][forName] and [`forBytes`][forBytes] to create version 5 UUIDs
-(version 3 UUIDs are very similar, but version 5 is recommended unless required
-for backwards-compatbility).
+- **Version 4**: Randomly generated. Use [`generator`][generator] when you need
+  a unique key for a value that may change over time.
+- **Version 5**: Deterministic, created from a "name" and a "namespace". Use
+  [`forName`][forName] or [`forBytes`][forBytes] when the same input should
+  always produce the same UUID (version 3 is similar but version 5 is
+  recommended unless required for backwards-compatibility).
+- **Version 7**: Time-sortable, containing a Unix timestamp in milliseconds
+  plus random data. Use [`generatorV7`][generatorV7] when UUIDs are used as
+  database primary keys or when sort order by creation time matters. Use
+  [`stepV7`][stepV7] with [`initialV7State`][initialV7State] when you need
+  monotonic ordering within the same millisecond.
 
 ### I have a suggestion/I've found a bug
 
@@ -92,7 +112,7 @@ I can.
 
 ### I need to create version 1/2 UUIDs
 
-This can't *reaallly* be done in the browser (as far as I know), but feel free
+This can't _reaallly_ be done in the browser (as far as I know), but feel free
 to [open an issue on Github][new-issue] anyway.
 
 ### I need variant 0 UUIDs!
@@ -104,12 +124,15 @@ Really!? Umm, well I guess you'd better [open an issue on Github][new-issue].
 This might be better suited in a separate package, but why not [open an issue on
 Github][new-issue]?
 
-
 [UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 [new-issue]: https://github.com/TSFoster/elm-uuid/issues/new
 [elmrandom2]: https://github.com/elm/random/issues/2
 [getRandomValues]: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
-[rfc]: https://tools.ietf.org/html/rfc4122
+[rfc4122]: https://tools.ietf.org/html/rfc4122
+[rfc9562]: https://www.rfc-editor.org/rfc/rfc9562.html
 [generator]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#generator
+[generatorV7]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#generatorV7
+[initialV7State]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#initialV7State
+[stepV7]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#stepV7
 [forName]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#forName
 [forBytes]: https://package.elm-lang.org/packages/TSFoster/elm-uuid/latest/UUID#forBytes

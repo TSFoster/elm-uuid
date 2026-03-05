@@ -3,9 +3,10 @@ module Tests exposing (suite)
 import Bytes.Encode
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
+import Random
 import Regex exposing (Regex)
-import Shrink exposing (noShrink)
 import Test exposing (Test, describe, fuzz, test)
+import Time
 import UUID
     exposing
         ( Error(..)
@@ -18,6 +19,9 @@ import UUID
         , fromBytes
         , fromString
         , generator
+        , generatorV7
+        , initialV7State
+        , stepV7
         , toBytes
         , toRepresentation
         , toString
@@ -30,19 +34,19 @@ suite =
         [ describe "formatting"
             [ fuzz fuzzer "Canonical" <|
                 \uuid ->
-                    Expect.true (toRepresentation Canonical uuid ++ " is not in the canonical textual representation") <|
+                    expectTrue (toRepresentation Canonical uuid ++ " is not in the canonical textual representation") <|
                         isCanonicalFormat (toRepresentation Canonical uuid)
             , fuzz fuzzer "GUID" <|
                 \uuid ->
-                    Expect.true (toRepresentation Guid uuid ++ " is not in Microsoft’s textual representation of GUIDs") <|
+                    expectTrue (toRepresentation Guid uuid ++ " is not in Microsoft's textual representation of GUIDs") <|
                         isGuidFormat (toRepresentation Guid uuid)
             , fuzz fuzzer "Compact" <|
                 \uuid ->
-                    Expect.true (toRepresentation Compact uuid ++ " is not in a compact respresentation") <|
+                    expectTrue (toRepresentation Compact uuid ++ " is not in a compact representation") <|
                         isCompactFormat (toRepresentation Compact uuid)
             , fuzz fuzzer "URN" <|
                 \uuid ->
-                    Expect.true (toRepresentation Urn uuid ++ " is not a correctly-formatted URN for the UUID") <|
+                    expectTrue (toRepresentation Urn uuid ++ " is not a correctly-formatted URN for the UUID") <|
                         isUrnFormat (toRepresentation Urn uuid)
             , fuzz fuzzer "toString is canonical" <|
                 \uuid -> Expect.equal (toRepresentation Canonical uuid) (toString uuid)
@@ -70,6 +74,14 @@ suite =
                 \_ -> Expect.ok (fromString "12345678-1234-4234-8888-abcdefabcdef")
             , test "reads version 5 UUIDs" <|
                 \_ -> Expect.ok (fromString "12345678-1234-5234-8888-abcdefabcdef")
+            , test "reads version 6 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-6234-8888-abcdefabcdef")
+            , test "reads version 7 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-7234-8888-abcdefabcdef")
+            , test "reads version 8 UUIDs" <|
+                \_ -> Expect.ok (fromString "12345678-1234-8234-8888-abcdefabcdef")
+            , test "doesn't read version 9 UUIDs" <|
+                \_ -> Expect.err (fromString "12345678-1234-9234-8888-abcdefabcdef")
             , test "reads UUIDs with missing dashes" <|
                 \_ -> Expect.ok (fromString "12345678123412348888abcdefabcdef")
             , test "doesn't read variant 0 UUIDs" <|
@@ -95,6 +107,75 @@ suite =
             , test "greater UUIDs in the fourth quarter are GT" <|
                 compareTest "12345678-1234-4234-8888-abcdefabcdff" GT "12345678-1234-4234-8888-abcdefabcdef"
             ]
+        , describe "generatorV7"
+            [ fuzz fuzzerV7 "generates version 7 UUIDs" <|
+                \uuid -> Expect.equal 7 (UUID.version uuid)
+            , fuzz fuzzerV7 "round-trips through toString/fromString" <|
+                \uuid -> Expect.equal (Ok uuid) (fromString (toString uuid))
+            , fuzz fuzzerV7 "round-trips through toBytes/fromBytes" <|
+                \uuid -> Expect.equal (Ok uuid) (fromBytes (toBytes uuid))
+            , test "embeds the correct timestamp" <|
+                \_ ->
+                    let
+                        millis =
+                            1234567890000
+
+                        uuid =
+                            Random.step (generatorV7 (Time.millisToPosix millis)) (Random.initialSeed 42)
+                                |> Tuple.first
+
+                        str =
+                            toString uuid
+
+                        -- Extract timestamp hex from canonical format:
+                        -- xxxxxxxx-xxxx-7xxx-xxxx-xxxxxxxxxxxx
+                        -- The 48-bit timestamp occupies: first 8 hex (32 bits) + next 4 hex (16 bits)
+                        tsHex =
+                            String.left 8 str ++ String.slice 9 13 str
+                    in
+                    Expect.equal "011f71fb0450" (String.toLower tsHex)
+            ]
+        , describe "stepV7 monotonicity"
+            [ test "UUIDs from stepV7 with the same timestamp are monotonically ordered" <|
+                \_ ->
+                    let
+                        time =
+                            Time.millisToPosix 1700000000000
+
+                        ( state0, _ ) =
+                            Random.step initialV7State (Random.initialSeed 99)
+
+                        ( uuid1, state1 ) =
+                            stepV7 time state0
+
+                        ( uuid2, state2 ) =
+                            stepV7 time state1
+
+                        ( uuid3, _ ) =
+                            stepV7 time state2
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal LT (UUID.compare uuid1 uuid2)
+                        , \_ -> Expect.equal LT (UUID.compare uuid2 uuid3)
+                        , \_ -> Expect.equal 7 (UUID.version uuid1)
+                        , \_ -> Expect.equal 7 (UUID.version uuid2)
+                        , \_ -> Expect.equal 7 (UUID.version uuid3)
+                        ]
+                        ()
+            , test "UUIDs from stepV7 with increasing timestamps are ordered" <|
+                \_ ->
+                    let
+                        ( state0, _ ) =
+                            Random.step initialV7State (Random.initialSeed 99)
+
+                        ( uuid1, state1 ) =
+                            stepV7 (Time.millisToPosix 1700000000000) state0
+
+                        ( uuid2, _ ) =
+                            stepV7 (Time.millisToPosix 1700000000001) state1
+                    in
+                    Expect.equal LT (UUID.compare uuid1 uuid2)
+            ]
         ]
 
 
@@ -104,7 +185,7 @@ suite =
 
 fuzzer : Fuzzer UUID
 fuzzer =
-    Fuzz.oneOf [ fuzzerV3, fuzzerV4, fuzzerV5 ]
+    Fuzz.oneOf [ fuzzerV3, fuzzerV4, fuzzerV5, fuzzerV7 ]
 
 
 fuzzerV3 : Fuzzer UUID
@@ -117,7 +198,7 @@ fuzzerV3 =
 
 fuzzerV4 : Fuzzer UUID
 fuzzerV4 =
-    Fuzz.custom generator noShrink
+    Fuzz.fromGenerator generator
 
 
 fuzzerV5 : Fuzzer UUID
@@ -126,6 +207,14 @@ fuzzerV5 =
         [ Fuzz.map2 forName Fuzz.string fuzzerV4
         , Fuzz.map2 forBytes (Fuzz.map (Bytes.Encode.encode << Bytes.Encode.string) Fuzz.string) fuzzerV4
         ]
+
+
+fuzzerV7 : Fuzzer UUID
+fuzzerV7 =
+    Fuzz.fromGenerator
+        (Random.int 0 Random.maxInt
+            |> Random.andThen (\millis -> generatorV7 (Time.millisToPosix millis))
+        )
 
 
 
@@ -172,13 +261,13 @@ guidRegex =
 
 compactRegex : Regex
 compactRegex =
-    Regex.fromString "[0-f]{12}[1-5][0-f]{3}[8-d][0-f]{15}"
+    Regex.fromString "[0-f]{12}[1-8][0-f]{3}[8-d][0-f]{15}"
         |> Maybe.withDefault Regex.never
 
 
 uuidRegexString : String
 uuidRegexString =
-    "[0-f]{8}-[0-f]{4}-[1-5][0-f]{3}-[8-d][0-f]{3}-[0-f]{12}"
+    "[0-f]{8}-[0-f]{4}-[1-8][0-f]{3}-[8-d][0-f]{3}-[0-f]{12}"
 
 
 
@@ -189,3 +278,12 @@ compareTest : String -> Basics.Order -> String -> () -> Expectation
 compareTest uuid1 order uuid2 () =
     Expect.equal (Ok order) <|
         Result.map2 UUID.compare (fromString uuid1) (fromString uuid2)
+
+
+expectTrue : String -> Bool -> Expectation
+expectTrue failureMessage bool =
+    if bool then
+        Expect.pass
+
+    else
+        Expect.fail failureMessage
