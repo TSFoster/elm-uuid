@@ -8,8 +8,8 @@ UUIDs.
 
 There are several versions and variants of UUID. This package supports
 the reading of all variant 1 UUIDs (versions 1-8, those outlined in [RFC
-4122][rfc4122] and [RFC 9562][rfc9562]), and the creation of versions 3, 4, 5
-and 7. This covers the vast majority of UUIDs in use today.
+9562][rfc9562], previously [RFC 4122][rfc4122]), and the creation of versions 3,
+4, 5 and 7. This covers the vast majority of UUIDs in use today.
 
 ## Examples
 
@@ -87,7 +87,7 @@ UUIDs, which should be in the format `00000000-0000-A000-B000-000000000000`.
 If the character at position `B` is `8`, `9`, `a` or `b`, you have a variant 1
 UUID, and this package is for you! The character in position `A` is the version
 number. (If it isn't `1`-`8`, then it isn't a UUID as defined
-by [RFC 4122][rfc4122] or [RFC 9562][rfc9562].)
+by [RFC 9562][rfc9562].)
 
 ### Which version UUID should I use?
 

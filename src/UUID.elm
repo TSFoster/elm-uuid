@@ -17,8 +17,8 @@ be used as an identifier for anything. Each 128-bit number, usually represented
 as 32 hexadecimal digits, is generally used under the assumption that it is
 Universally Unique (hence the name).
 
-This package supports variant 1 UUIDs (those outlined in [RFC 4122][rfc4122] and
-[RFC 9562][rfc9562]), which covers the vast majority of those in use
+This package supports variant 1 UUIDs (those outlined in [RFC 9562][rfc9562],
+previously [RFC4122][rfc4122]), which covers the vast majority of those in use
 (versions 1-8).
 
 [rfc4122]: https://tools.ietf.org/html/rfc4122
@@ -57,14 +57,14 @@ verison 3 UUIDs use MD5, and version 5 UUIDs use SHA-1. **Version 5 is the
 [officially recommended] version to use.**
 
 Although the [RFC defining UUIDs][rfc] defines some [base
-namespaces][appendix-c], any UUID can be used as a namespace, making a
+namespaces][namespace-id-usage], any UUID can be used as a namespace, making a
 hierarchy. I think this is pretty cool! You can use this method for consistently
 making the same UUID from the same data, which can be very useful in some
 situations.
 
-[officially recommended]: https://tools.ietf.org/html/rfc4122#section-4.3
-[rfc]: https://tools.ietf.org/html/rfc4122
-[appendix-c]: https://tools.ietf.org/html/rfc4122#appendix-C
+[officially recommended]: https://www.rfc-editor.org/rfc/rfc9562.html#section-5.3-4
+[rfc]: https://www.rfc-editor.org/rfc/rfc9562.html
+[namespace-id-usage]: https://www.rfc-editor.org/rfc/rfc9562.html#name-namespace-id-usage-and-allo
 
 @docs forName, forBytes, forNameV3, forBytesV3
 
