@@ -390,7 +390,7 @@ generatorV7 posix =
 version 7 UUIDs within the same millisecond.
 -}
 type V7State
-    = V7State Random.Seed Int
+    = V7State Random.Seed Time.Posix Int
 
 
 {-| Create an initial [`V7State`](#V7State) with the counter starting at 0,
@@ -406,15 +406,20 @@ allowing up to 4096 monotonic increments before the 12-bit counter wraps.
 -}
 initialV7State : Random.Generator V7State
 initialV7State =
-    Random.map (\seed -> V7State seed 0) Random.independentSeed
+    Random.map (\seed -> V7State seed (Time.millisToPosix 0) 0) Random.independentSeed
 
 
 {-| Generate a version 7 UUID with a monotonically increasing counter.
-Each call increments the 12-bit counter in the `rand_a` field, ensuring
-that UUIDs generated with the same timestamp are ordered.
 
-When the timestamp changes between calls, the UUIDs are naturally ordered
-by their timestamp, regardless of the counter value.
+The 12-bit counter in the `rand_a` field ensures monotonic ordering:
+
+  - **Same millisecond:** the counter increments from its previous value,
+    guaranteeing that up to 4096 UUIDs per millisecond are strictly ordered.
+  - **Different millisecond:** the counter resets to 0, since the timestamp
+    alone is sufficient to order UUIDs across different milliseconds.
+
+**Note:** if more than 4096 UUIDs are generated within the same millisecond,
+the 12-bit counter wraps around and monotonicity is no longer guaranteed.
 
     import Random
     import Time
@@ -436,10 +441,20 @@ by their timestamp, regardless of the counter value.
 
 -}
 stepV7 : Time.Posix -> V7State -> ( UUID, V7State )
-stepV7 posix (V7State seed counter) =
+stepV7 posix (V7State seed previousPosix previousCounter) =
     let
         millis =
             Time.posixToMillis posix
+
+        previousMillis =
+            Time.posixToMillis previousPosix
+
+        counter =
+            if millis == previousMillis then
+                previousCounter
+
+            else
+                0
 
         a =
             millis // 65536 |> forceUnsigned
@@ -464,7 +479,7 @@ stepV7 posix (V7State seed counter) =
                 |> toVersion 7
                 |> toVariant1
     in
-    ( uuid, V7State seed2 (counter + 1) )
+    ( uuid, V7State seed2 posix (counter + 1) )
 
 
 {-| You can attempt to create a UUID from a string. This function can interpret
