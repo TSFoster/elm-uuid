@@ -103,7 +103,8 @@ Probably version 4, 5 or 7, depending on your use case:
   plus random data. Use [`generatorV7`][generatorV7] when UUIDs are used as
   database primary keys or when sort order by creation time matters. Use
   [`stepV7`][stepV7] with [`initialV7State`][initialV7State] when you need
-  monotonic ordering within the same millisecond.
+  monotonic ordering within the same millisecond. **Note:** if you are using
+  V7 UUIDs, please upgrade from 4.3.0 to 4.3.1.
 
 ### I have a suggestion/I've found a bug
 
