@@ -175,6 +175,57 @@ suite =
                             stepV7 (Time.millisToPosix 1700000000001) state1
                     in
                     Expect.equal LT (UUID.compare uuid1 uuid2)
+            , test "counter resets when timestamp changes" <|
+                \_ ->
+                    let
+                        time1 =
+                            Time.millisToPosix 1700000000000
+
+                        time2 =
+                            Time.millisToPosix 1700000000001
+
+                        ( state0, _ ) =
+                            Random.step initialV7State (Random.initialSeed 99)
+
+                        -- Generate several UUIDs at time1 to increment the counter
+                        ( _, state1 ) =
+                            stepV7 time1 state0
+
+                        ( _, state2 ) =
+                            stepV7 time1 state1
+
+                        ( _, state3 ) =
+                            stepV7 time1 state2
+
+                        -- Switch to time2: counter should reset, so this UUID
+                        -- should have counter 0 in the rand_a field
+                        ( uuidAfterReset, _ ) =
+                            stepV7 time2 state3
+
+                        -- Generate a fresh state and get a UUID at time2
+                        -- with counter 0 for comparison
+                        ( freshState, _ ) =
+                            Random.step initialV7State (Random.initialSeed 99)
+
+                        ( uuidFresh, _ ) =
+                            stepV7 time2 freshState
+                    in
+                    -- Both should have counter 0 in their rand_a field.
+                    -- Extract the rand_a bits (lower 12 bits of the second int32,
+                    -- which appear as the last 3 hex chars of the version group).
+                    -- We check via the string representation: positions 15-18
+                    -- in canonical format (after "xxxxxxxx-xxxx-7") are the rand_a bits.
+                    Expect.all
+                        [ \_ ->
+                            Expect.equal
+                                (extractRandA uuidAfterReset)
+                                "000"
+                        , \_ ->
+                            Expect.equal
+                                (extractRandA uuidFresh)
+                                "000"
+                        ]
+                        ()
             ]
         ]
 
@@ -278,6 +329,13 @@ compareTest : String -> Basics.Order -> String -> () -> Expectation
 compareTest uuid1 order uuid2 () =
     Expect.equal (Ok order) <|
         Result.map2 UUID.compare (fromString uuid1) (fromString uuid2)
+
+
+extractRandA : UUID -> String
+extractRandA uuid =
+    -- In canonical format "xxxxxxxx-xxxx-7xxx-...", the rand_a bits
+    -- are the 3 hex chars after the version nibble: positions 15..17
+    toString uuid |> String.slice 15 18
 
 
 expectTrue : String -> Bool -> Expectation
